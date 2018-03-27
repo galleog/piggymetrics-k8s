@@ -8,7 +8,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.ResourceServerProperties;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
-import org.springframework.cloud.netflix.feign.EnableFeignClients;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.core.convert.CustomConversions;
@@ -27,25 +27,25 @@ import java.util.Arrays;
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class StatisticsApplication {
 
-	@Autowired
-	private ResourceServerProperties sso;
+    @Autowired
+    private ResourceServerProperties sso;
 
-	public static void main(String[] args) {
-		SpringApplication.run(StatisticsApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(StatisticsApplication.class, args);
+    }
 
-	@Bean
-	public ResourceServerTokenServices tokenServices() {
-		return new CustomUserInfoTokenServices(sso.getUserInfoUri(), sso.getClientId());
-	}
+    @Bean
+    public ResourceServerTokenServices tokenServices() {
+        return new CustomUserInfoTokenServices(sso.getUserInfoUri(), sso.getClientId());
+    }
 
-	@Configuration
-	static class CustomConversionsConfig {
+    @Configuration
+    static class CustomConversionsConfig {
 
-		@Bean
-		public CustomConversions customConversions() {
-			return new CustomConversions(Arrays.asList(new DataPointIdReaderConverter(),
-					new DataPointIdWriterConverter()));
-		}
-	}
+        @Bean
+        public CustomConversions customConversions() {
+            return new CustomConversions(Arrays.asList(new DataPointIdReaderConverter(),
+                    new DataPointIdWriterConverter()));
+        }
+    }
 }

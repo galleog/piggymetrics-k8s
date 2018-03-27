@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
-import org.springframework.cloud.netflix.feign.EnableFeignClients;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.cloud.security.oauth2.client.feign.OAuth2FeignRequestInterceptor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,33 +33,33 @@ import java.util.Arrays;
 @EnableScheduling
 public class NotificationServiceApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(NotificationServiceApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(NotificationServiceApplication.class, args);
+    }
 
-	@Bean
-	@ConfigurationProperties(prefix = "security.oauth2.client")
-	public ClientCredentialsResourceDetails clientCredentialsResourceDetails() {
-		return new ClientCredentialsResourceDetails();
-	}
+    @Bean
+    @ConfigurationProperties(prefix = "security.oauth2.client")
+    public ClientCredentialsResourceDetails clientCredentialsResourceDetails() {
+        return new ClientCredentialsResourceDetails();
+    }
 
-	@Bean
-	public RequestInterceptor oauth2FeignRequestInterceptor(){
-		return new OAuth2FeignRequestInterceptor(new DefaultOAuth2ClientContext(), clientCredentialsResourceDetails());
-	}
+    @Bean
+    public RequestInterceptor oauth2FeignRequestInterceptor() {
+        return new OAuth2FeignRequestInterceptor(new DefaultOAuth2ClientContext(), clientCredentialsResourceDetails());
+    }
 
-	@Bean
-	public OAuth2RestTemplate clientCredentialsRestTemplate() {
-		return new OAuth2RestTemplate(clientCredentialsResourceDetails());
-	}
+    @Bean
+    public OAuth2RestTemplate clientCredentialsRestTemplate() {
+        return new OAuth2RestTemplate(clientCredentialsResourceDetails());
+    }
 
-	@Configuration
-	static class CustomConversionsConfig {
+    @Configuration
+    static class CustomConversionsConfig {
 
-		@Bean
-		public CustomConversions customConversions() {
-			return new CustomConversions(Arrays.asList(new FrequencyReaderConverter(),
-					new FrequencyWriterConverter()));
-		}
-	}
+        @Bean
+        public CustomConversions customConversions() {
+            return new CustomConversions(Arrays.asList(new FrequencyReaderConverter(),
+                    new FrequencyWriterConverter()));
+        }
+    }
 }
