@@ -1,0 +1,30 @@
+pluginManagement {
+    repositories {
+        maven {
+            url 'http://repo.spring.io/plugins-release'
+        }
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'spring-k8s'
+
+include ':sk8s-core'
+include ':config'
+include ':gateway'
+include ':registry'
+include ':auth-service'
+include ':account-service'
+//include ':monitoring'
+//include ':statistics-service'
+//include ':notification-service'
+
+project(':sk8s-core').projectDir = "$rootDir/sk8s-core" as File
+project(':config').projectDir = "$rootDir/config" as File
+project(':gateway').projectDir = "$rootDir/gateway" as File
+project(':registry').projectDir = "$rootDir/registry" as File
+project(':auth-service').projectDir = "$rootDir/auth-service" as File
+project(':account-service').projectDir = "$rootDir/account-service" as File
+//project(':monitoring').projectDir = "$rootDir/monitoring" as File
+//project(':statistics-service').projectDir = "$rootDir/statistics-service" as File
+//project(':notification-service').projectDir = "$rootDir/notification-service" as File

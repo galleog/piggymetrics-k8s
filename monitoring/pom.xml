@@ -7,7 +7,7 @@
 
 	<parent>
 		<groupId>com.github.galleog.spring</groupId>
-		<artifactId>spring-kubernetes</artifactId>
+		<artifactId>spring-k8s</artifactId>
 		<version>${revision}</version>
 		<relativePath>..</relativePath>
 	</parent>
@@ -44,9 +44,23 @@
 	<build>
 		<plugins>
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+							<mainClass>${main-class}</mainClass>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+						</manifest>
+					</archive>
+				</configuration>
+			</plugin>
+
+			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
+					<mainClass>${main-class}</mainClass>
 					<finalName>${project.name}</finalName>
 				</configuration>
 			</plugin>

@@ -4,19 +4,18 @@ var user = {},
     expenses = {};
 
 function initAccount(account) {
-    user = new User(account.name, account.lastSeen, account.saving.currency, account.note);
-    savings = new Savings (account.saving.amount, account.saving.deposit, account.saving.capitalization, account.saving.interest);
+    user = new User(account.name, account.lastModifiedDate, account.balance.saving.moneyAmount.currency, account.note);
+    savings = new Savings(account.balance.saving.moneyAmount.amount, account.balance.saving.deposit, account.balance.saving.capitalization, account.balance.saving.interest);
 
-    if (account.incomes) {
-        for (i = 0; i < account.incomes.length; i++) {
-            AddIncome(i + 1, account.incomes[i].title, account.incomes[i].icon, account.incomes[i].currency, account.incomes[i].period, account.incomes[i].amount);
-        }
+    for (var i = 0; i < account.balance.incomes.length; i++) {
+        AddIncome(i + 1, account.balance.incomes[i].title, account.balance.incomes[i].icon,
+            account.balance.incomes[i].moneyAmount.currency, account.balance.incomes[i].period,
+            account.balance.incomes[i].moneyAmount.amount);
     }
-
-    if (account.expenses) {
-        for (j = 0; j < account.expenses.length; j++) {
-            AddExpense(j + 1, account.expenses[j].title, account.expenses[j].icon, account.expenses[j].currency, account.expenses[j].period, account.expenses[j].amount);
-        }
+    for (var j = 0; j < account.balance.expenses.length; j++) {
+        AddExpense(j + 1, account.balance.expenses[j].title, account.balance.expenses[j].icon,
+            account.balance.expenses[j].moneyAmount.currency, account.balance.expenses[j].period,
+            account.balance.expenses[j].moneyAmount.amount);
     }
 }
 
@@ -875,14 +874,38 @@ function jsonDataSave() {
             headers: {'Authorization': 'Bearer ' + getOauthTokenFromStorage()},
             data: JSON.stringify({
                 note: user.notes,
-                incomes: $.map(incomes, function(value) {return [value]}),
-                expenses: $.map(expenses, function(value) {return [value]}),
-                saving: {
-                    amount: Math.ceil(savings.freeMoney),
-                    capitalization: savings.capitalization,
-                    deposit: savings.deposit,
-                    currency: user.checkedCurr,
-                    interest: savings.percent
+                balance: {
+                    incomes: $.map(incomes, function (value) {
+                        return {
+                            title: value.title,
+                            period: value.period,
+                            moneyAmount: {
+                                amount: value.amount,
+                                currency: value.currency
+                            },
+                            icon: value.icon
+                        };
+                    }),
+                    expenses: $.map(expenses, function (value) {
+                        return {
+                            title: value.title,
+                            period: value.period,
+                            moneyAmount: {
+                                amount: value.amount,
+                                currency: value.currency
+                            },
+                            icon: value.icon
+                        };
+                    }),
+                    saving: {
+                        moneyAmount: {
+                            amount: Math.ceil(savings.freeMoney),
+                            currency: user.checkedCurr
+                        },
+                        capitalization: savings.capitalization,
+                        deposit: savings.deposit,
+                        interest: savings.percent
+                    }
                 }
             }),
             success: function () {

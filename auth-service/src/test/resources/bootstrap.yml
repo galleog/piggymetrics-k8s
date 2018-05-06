@@ -1,3 +1,10 @@
 eureka:
   client:
     enabled: false
+
+spring:
+  application:
+    name: auth-service
+  cloud:
+    config:
+      enabled: false

@@ -1,0 +1,8 @@
+apply plugin: 'org.springframework.boot'
+
+description = 'registry'
+
+dependencies {
+    compile 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-server'
+    compile 'org.springframework.cloud:spring-cloud-starter-config'
+}

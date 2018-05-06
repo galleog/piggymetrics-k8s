@@ -1,0 +1,56 @@
+plugins {
+    id 'org.springframework.boot' version '2.0.1.RELEASE' apply false
+}
+
+ext {
+    springCloudVersion = 'Finchley.M9'
+    springSecurityOauthVersion = '2.3.0.RELEASE'
+    dbsetupVersion = '2.1.0'
+    monetaVersion = '1.1'
+    jadiraVersion = '6.0.1.GA'
+    jacksonDatatypeMoneyVersion = '1.0.1'
+    guavaVersion = '21.0'
+}
+
+allprojects {
+    apply plugin: 'eclipse'
+    apply plugin: 'idea'
+
+    group = 'com.github.galleog.spring'
+    version = '1.0-SNAPSHOT'
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+        options.compilerArgs = ['-Xlint:none']
+    }
+
+    repositories {
+        jcenter()
+        maven { url "https://repo.spring.io/libs-milestone" }
+        maven { url "http://repo.maven.apache.org/maven2" }
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
+            mavenBom "org.springframework.cloud:spring-cloud-dependencies:$springCloudVersion"
+        }
+
+        dependencies {
+            dependency "org.springframework.security.oauth:spring-security-oauth2:$springSecurityOauthVersion"
+            dependency "com.ninja-squad:DbSetup:$dbsetupVersion"
+            dependency "org.javamoney:moneta:$monetaVersion"
+            dependency "org.jadira.usertype:usertype.core:$jadiraVersion"
+            dependency "org.zalando:jackson-datatype-money:$jacksonDatatypeMoneyVersion"
+            dependency "com.google.guava:guava:$guavaVersion"
+        }
+    }
+}

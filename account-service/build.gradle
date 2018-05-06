@@ -1,0 +1,31 @@
+apply plugin: 'org.springframework.boot'
+
+description = 'account-service'
+
+dependencies {
+    compile project(':sk8s-core')
+    compile 'org.springframework.boot:spring-boot-starter-web'
+    compile 'org.springframework.boot:spring-boot-starter-data-jpa'
+    compile 'org.springframework.cloud:spring-cloud-starter-config'
+    compile 'org.springframework.boot:spring-boot-starter-security'
+    compile 'org.springframework.cloud:spring-cloud-starter-oauth2'
+    compile 'org.springframework.security.oauth:spring-security-oauth2'
+    compile 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    compile 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    compile 'org.springframework.boot:spring-boot-starter-actuator'
+    compile 'org.springframework.cloud:spring-cloud-starter-bus-amqp'
+    compile 'org.springframework.cloud:spring-cloud-netflix-hystrix-stream'
+    compile 'org.apache.commons:commons-lang3'
+    compile 'org.javamoney:moneta'
+    compile 'org.jadira.usertype:usertype.core'
+    compile 'org.zalando:jackson-datatype-money'
+    compile 'org.liquibase:liquibase-core'
+    compile 'com.google.guava:guava'
+
+    compileOnly 'org.projectlombok:lombok'
+
+    testCompile 'org.springframework.boot:spring-boot-starter-test'
+    testCompile 'org.springframework.security:spring-security-test'
+    testCompile 'com.h2database:h2'
+    testCompile 'com.ninja-squad:DbSetup'
+}
