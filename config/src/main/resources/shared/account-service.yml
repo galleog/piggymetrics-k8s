@@ -17,5 +17,4 @@ spring:
       port: 27017
 
 server:
-  context-path: /accounts
   port: 6000

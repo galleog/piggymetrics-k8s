@@ -1,11 +1,13 @@
 # Intellij
 .idea/
 *.iml
-*.iws
 
 # Mac
 .DS_Store
 
-# Maven
-log/
-target/
+# Gradle
+.gradle/
+build/
+
+# Java
+.resourceCache/

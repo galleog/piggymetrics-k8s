@@ -1,7 +1,7 @@
-FROM java:8-jre
-MAINTAINER Alexander Lukyanchikov <sqshq@sqshq.com>
+FROM openjdk:8-jdk-alpine
+ENV PORT 8080
+EXPOSE 8080
 
-ADD ./target/account-service.jar /app/
-CMD ["java", "-Xmx200m", "-jar", "/app/account-service.jar"]
-
-EXPOSE 6000
+COPY build/libs/*.jar /opt/app.jar
+WORKDIR /opt
+CMD ["java", "-Xmx200m", "-jar", "/app.jar"]

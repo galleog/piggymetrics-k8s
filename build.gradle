@@ -1,22 +1,30 @@
 plugins {
-    id 'org.springframework.boot' version '2.0.1.RELEASE' apply false
+    id 'org.springframework.boot' version '2.0.3.RELEASE' apply false
 }
 
 ext {
-    springCloudVersion = 'Finchley.M9'
+    springCloudVersion = 'Finchley.RELEASE'
     springSecurityOauthVersion = '2.3.0.RELEASE'
+    springCloudKubernetesVersion = '0.3.0.RELEASE'
     dbsetupVersion = '2.1.0'
-    monetaVersion = '1.1'
+    monetaVersion = '1.2.1'
     jadiraVersion = '6.0.1.GA'
     jacksonDatatypeMoneyVersion = '1.0.1'
     guavaVersion = '21.0'
+    assertjDbVersion = '1.2.0'
+    commonsValidatorVersion = '1.6'
+    junitJupiterVersion = '5.2.0'
+    mockitoExtensionVersion = '1.0.1'
+    commonsIoVersion = '2.6'
+    shedlockVersion = '1.0.0'
+    simpleJavaMailVersion = '5.0.3'
 }
 
 allprojects {
     apply plugin: 'eclipse'
     apply plugin: 'idea'
 
-    group = 'com.github.galleog.spring'
+    group = 'com.github.galleog.piggymetrics'
     version = '1.0-SNAPSHOT'
 }
 
@@ -34,7 +42,7 @@ subprojects {
 
     repositories {
         jcenter()
-        maven { url "https://repo.spring.io/libs-milestone" }
+        maven { url "https://repo.spring.io/milestone" }
         maven { url "http://repo.maven.apache.org/maven2" }
     }
 
@@ -42,6 +50,7 @@ subprojects {
         imports {
             mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
             mavenBom "org.springframework.cloud:spring-cloud-dependencies:$springCloudVersion"
+            mavenBom "org.springframework.cloud:spring-cloud-kubernetes-dependencies:$springCloudKubernetesVersion"
         }
 
         dependencies {
@@ -51,6 +60,20 @@ subprojects {
             dependency "org.jadira.usertype:usertype.core:$jadiraVersion"
             dependency "org.zalando:jackson-datatype-money:$jacksonDatatypeMoneyVersion"
             dependency "com.google.guava:guava:$guavaVersion"
+            dependency "org.assertj:assertj-db:$assertjDbVersion"
+            dependency "commons-validator:commons-validator:$commonsValidatorVersion"
+            dependency "org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion"
+            dependency "org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion"
+            dependency "org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion"
+            dependency "name.falgout.jeffrey.testing.junit5:mockito-extension:$mockitoExtensionVersion"
+            dependency "commons-io:commons-io:$commonsIoVersion"
+            dependency "net.javacrumbs.shedlock:shedlock-spring:$shedlockVersion"
+            dependency "net.javacrumbs.shedlock:shedlock-provider-jdbc-template:$shedlockVersion"
+            dependency "org.simplejavamail:simple-java-mail:$simpleJavaMailVersion"
         }
+    }
+
+    test {
+       useJUnitPlatform()
     }
 }

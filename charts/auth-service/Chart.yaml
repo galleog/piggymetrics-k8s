@@ -1,0 +1,11 @@
+apiVersion: v1
+description: Helm Chart for Auth Microservice
+name: auth-service
+version: 0.1.0
+home: https://github.com/galleog/piggymetrics-k8s
+sources:
+- https://github.com/galleog/piggymetrics-k8s
+maintainers:
+- name: Oleg Galkin
+  email: ogalleg@gmail.com
+  url: http://javagalleog.blogspot.com/

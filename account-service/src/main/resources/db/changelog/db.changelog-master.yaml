@@ -1,196 +1,491 @@
 databaseChangeLog:
-  - changeSet:
-      id: 1
-      author: galleog
-      changes:
-        - createTable:
-            tableName: accounts
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  constraints:
-                    primaryKey: true
-                    primaryKeyName: pk_accounts
-                    nullable: false
-              - column:
-                  name: name
-                  type: varchar(20)
-                  constraints:
-                    unique: true
-                    uniqueConstraintName: uc_users_name
-                    nullable: false
-              - column:
-                  name: last_modified_date
-                  type: datetime
-                  constraints:
-                    nullable: false
-              - column:
-                  name: note
-                  type: varchar(20)
-              - column:
-                  name: version
-                  type: int
+- property:
+    name: now
+    dbms: postgresql
+    value: localtimestamp()
 
-  - changeSet:
-      id: 2
+- property:
+    name: now
+    dbms: h2
+    value: current_timestamp()
+
+- changeSet:
+    id: 1
+    author: galleog
+    changes:
+    - createTable:
+        tableName: accounts
+        columns:
+        - column:
+            name: id
+            type: int
+            constraints:
+              primaryKey: true
+              primaryKeyName: pk_accounts
+              nullable: false
+        - column:
+            name: name
+            type: varchar(20)
+            constraints:
+              unique: true
+              uniqueConstraintName: uc_accounts_name
+              nullable: false
+        - column:
+            name: last_modified_date
+            type: datetime
+            constraints:
+              nullable: false
+        - column:
+            name: note
+            type: varchar(20)
+        - column:
+            name: version
+            type: int
+            constraints:
+              nullable: false
+
+- changeSet:
+    id: 2
+    author: galleog
+    changes:
+    - createSequence:
+        sequenceName: account_seq
+        startValue: 10
+        incrementBy: 1
+
+- changeSet:
+    id: 3
+    author: galleog
+    changes:
+    - createTable:
+        tableName: savings
+        columns:
+        - column:
+            name: account_id
+            type: int
+            constraints:
+              primaryKey: true
+              primaryKeyName: pk_savings
+              nullable: false
+        - column:
+            name: currency_code
+            type: char(3)
+            constraints:
+              nullable: false
+        - column:
+            name: amount
+            type: numeric(20,2)
+            constraints:
+              nullable: false
+        - column:
+            name: interest
+            type: numeric(4,2)
+            constraints:
+              nullable: false
+        - column:
+            name: deposit
+            type: boolean
+            constraints:
+              nullable: false
+        - column:
+            name: capitalization
+            type: boolean
+            constraints:
+              nullable: false
+
+- changeSet:
+    id: 4
+    author: galleog
+    changes:
+    - addForeignKeyConstraint:
+        baseTableName: savings
+        baseColumnNames: account_id
+        referencedTableName: accounts
+        referencedColumnNames: id
+        constraintName: fk_savings_account_id
+
+- changeSet:
+    id: 5
+    author: galleog
+    changes:
+    - createTable:
+        tableName: items
+        columns:
+        - column:
+            name: id
+            type: bigint
+            constraints:
+              primaryKey: true
+              primaryKeyName: pk_items
+              nullable: false
+        - column:
+            name: account_id
+            type: int
+            constraints:
+              nullable: false
+        - column:
+            name: title
+            type: varchar(20)
+            constraints:
+              nullable: false
+        - column:
+            name: currency_code
+            type: char(3)
+            constraints:
+              nullable: false
+        - column:
+            name: amount
+            type: numeric(20,2)
+            constraints:
+              nullable: false
+        - column:
+            name: period
+            type: varchar(7)
+            constraints:
+              nullable: false
+        - column:
+            name: icon
+            type: varchar(255)
+            constraints:
+              nullable: false
+        - column:
+            name: item_type
+            type: char(1)
+            constraints:
+              nullable: false
+
+- changeSet:
+    id: 6
+    author: galleog
+    changes:
+    - addForeignKeyConstraint:
+        baseTableName: items
+        baseColumnNames: account_id
+        referencedTableName: accounts
+        referencedColumnNames: id
+        constraintName: fk_items_account_id
+
+- changeSet:
+    id: 7
+    author: galleog
+    changes:
+    - createSequence:
+        sequenceName: item_seq
+        startValue: 10
+        incrementBy: 1
+
+- changeSet:
+    id: 8
+    author: galleog
+    changes:
+    - insert:
+        tableName: accounts
+        columns:
+        - column:
+            name: id
+            value: 1
+        - column:
+            name: name
+            value: demo
+        - column:
+            name: last_modified_date
+            valueDate: ${now}
+        - column:
+            name: note
+            value: demo note
+        - column:
+            name: version
+            value: 1
+    - insert:
+        tableName: savings
+        columns:
+        - column:
+            name: account_id
+            value: 1
+        - column:
+            name: currency_code
+            value: USD
+        - column:
+            name: amount
+            value: 5900
+        - column:
+            name: interest
+            value: 3.32
+        - column:
+            name: deposit
+            valueBoolean: true
+        - column:
+            name: capitalization
+            valueBoolean: false
+    - insert:
+        tableName: items
+        columns:
+        - column:
+            name: id
+            value: 1
+        - column:
+            name: account_id
+            value: 1
+        - column:
+            name: title
+            value: Rent
+        - column:
+            name: currency_code
+            value: USD
+        - column:
+            name: amount
+            value: 1300
+        - column:
+            name: period
+            value: MONTH
+        - column:
+            name: icon
+            value: home
+        - column:
+            name: item_type
+            value: e
+    - insert:
+        tableName: items
+        columns:
+        - column:
+            name: id
+            value: 2
+        - column:
+            name: account_id
+            value: 1
+        - column:
+            name: title
+            value: Utilities
+        - column:
+            name: currency_code
+            value: USD
+        - column:
+            name: amount
+            value: 120
+        - column:
+            name: period
+            value: MONTH
+        - column:
+            name: icon
+            value: utilities
+        - column:
+            name: item_type
+            value: e
+    - insert:
+        tableName: items
+        columns:
+        - column:
+            name: id
+            value: 3
+        - column:
+            name: account_id
+            value: 1
+        - column:
+            name: title
+            value: Meal
+        - column:
+            name: currency_code
+            value: USD
+        - column:
+            name: amount
+            value: 20
+        - column:
+            name: period
+            value: DAY
+        - column:
+            name: icon
+            value: meal
+        - column:
+            name: item_type
+            value: e
+    - insert:
+        tableName: items
+        columns:
+        - column:
+            name: id
+            value: 4
+        - column:
+            name: account_id
+            value: 1
+        - column:
+            name: title
+            value: Gas
+        - column:
+            name: currency_code
+            value: USD
+        - column:
+            name: amount
+            value: 240
+        - column:
+            name: period
+            value: MONTH
+        - column:
+            name: icon
+            value: gas
+        - column:
+            name: item_type
+            value: e
+    - insert:
+        tableName: items
+        columns:
+        - column:
+            name: id
+            value: 5
+        - column:
+            name: account_id
+            value: 1
+        - column:
+            name: title
+            value: Vacation
+        - column:
+            name: currency_code
+            value: EUR
+        - column:
+            name: amount
+            value: 3500
+        - column:
+            name: period
+            value: YEAR
+        - column:
+            name: icon
+            value: island
+        - column:
+            name: item_type
+            value: e
+    - insert:
+        tableName: items
+        columns:
+        - column:
+            name: id
+            value: 6
+        - column:
+            name: account_id
+            value: 1
+        - column:
+            name: title
+            value: Phone
+        - column:
+            name: currency_code
+            value: USD
+        - column:
+            name: amount
+            value: 30
+        - column:
+            name: period
+            value: MONTH
+        - column:
+            name: icon
+            value: phone
+        - column:
+            name: item_type
+            value: e
+    - insert:
+        tableName: items
+        columns:
+        - column:
+            name: id
+            value: 7
+        - column:
+            name: account_id
+            value: 1
+        - column:
+            name: title
+            value: Gym
+        - column:
+            name: currency_code
+            value: USD
+        - column:
+            name: amount
+            value: 700
+        - column:
+            name: period
+            value: YEAR
+        - column:
+            name: icon
+            value: sport
+        - column:
+            name: item_type
+            value: e
+    - insert:
+        tableName: items
+        columns:
+        - column:
+            name: id
+            value: 8
+        - column:
+            name: account_id
+            value: 1
+        - column:
+            name: title
+            value: Salary
+        - column:
+            name: currency_code
+            value: USD
+        - column:
+            name: amount
+            value: 42000
+        - column:
+            name: period
+            value: YEAR
+        - column:
+            name: icon
+            value: wallet
+        - column:
+            name: item_type
+            value: i
+    - insert:
+        tableName: items
+        columns:
+        - column:
+            name: id
+            value: 9
+        - column:
+            name: account_id
+            value: 1
+        - column:
+            name: title
+            value: Scholarship
+        - column:
+            name: currency_code
+            value: USD
+        - column:
+            name: amount
+            value: 500
+        - column:
+            name: period
+            value: MONTH
+        - column:
+            name: icon
+            value: edu
+        - column:
+            name: item_type
+            value: i
+
+- changeSet:
+    id: 9
+    author: galleog
+    changes:
+    - createTable:
+        tableName: cancel_request
+        columns:
+        - column:
+            name: id
+            type: int
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: type_id
+            type: bigint
+            constraints:
+              nullable: false
+
+- changeSet:
+      id: 10
       author: galleog
       changes:
-        - createSequence:
-            sequenceName: account_seq
+      - createSequence:
+            sequenceName: cancel_request_seq
             startValue: 1
             incrementBy: 1
-
-  - changeSet:
-      id: 3
-      author: galleog
-      changes:
-        - createTable:
-            tableName: items
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  constraints:
-                    primaryKey: true
-                    primaryKeyName: pk_items
-                    nullable: false
-              - column:
-                  name: title
-                  type: varchar(20)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: currency
-                  type: char(3)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: amount
-                  type: numeric(20,2)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: period
-                  type: varchar(7)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: icon
-                  type: varchar(255)
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: 4
-      author: galleog
-      changes:
-        - createSequence:
-                    sequenceName: item_seq
-                    startValue: 1
-                    incrementBy: 1
-
-  - changeSet:
-      id: 5
-      author: galleog
-      changes:
-        - createTable:
-            tableName: savings
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  constraints:
-                    primaryKey: true
-                    primaryKeyName: pk_savings
-                    nullable: false
-              - column:
-                  name: currency
-                  type: char(3)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: amount
-                  type: numeric(20,2)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: interest
-                  type: numeric(4,2)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: deposit
-                  type: boolean
-                  constraints:
-                    nullable: false
-              - column:
-                  name: capitalization
-                  type: boolean
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: 6
-      author: galleog
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: savings
-            baseColumnNames: id
-            referencedTableName: accounts
-            referencedColumnNames: id
-            constraintName: fk_savings_id
-
-  - changeSet:
-      id: 7
-      author: galleog
-      changes:
-        - createTable:
-            tableName: account_items
-            columns:
-              - column:
-                  name: account_id
-                  type: int
-                  constraints:
-                    nullable: false
-              - column:
-                  name: item_id
-                  type: int
-                  constraints:
-                    nullable: false
-              - column:
-                  name: item_type
-                  type: char(1)
-
-  - changeSet:
-      id: 8
-      author: galleog
-      changes:
-        - addPrimaryKey:
-            tableName: account_items
-            columnNames: account_id, item_id
-            constraintName: pk_account_items
-
-  - changeSet:
-        id: 9
-        author: galleog
-        changes:
-          - addForeignKeyConstraint:
-              baseTableName: account_items
-              baseColumnNames: account_id
-              referencedTableName: accounts
-              referencedColumnNames: id
-              constraintName: fk_account_items_account_id
-
-  - changeSet:
-          id: 10
-          author: galleog
-          changes:
-            - addForeignKeyConstraint:
-                baseTableName: account_items
-                baseColumnNames: item_id
-                referencedTableName: items
-                referencedColumnNames: id
-                constraintName: fk_account_items_items_id
-
 
