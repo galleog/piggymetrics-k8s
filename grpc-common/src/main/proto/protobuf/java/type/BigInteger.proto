@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf.java.type;
+
+option java_package = "com.github.galleog.protobuf.java.type";
+option java_outer_classname = "BigIntegerProto";
+
+// Protobuf analog for java.math.BigInteger.
+message BigInteger {
+    bytes value = 1;
+}

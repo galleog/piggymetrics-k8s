@@ -1,13 +1,13 @@
 spring:
   datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:db;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
-    username: sa
-    password:
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    url: jdbc:tc:postgresql:10.7-alpine://localhost/databasename
+    username: test
+    password: test
 
   jpa:
     open-in-view: false
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.PostgreSQL95Dialect
     hibernate:
       ddl-auto: none
     properties:

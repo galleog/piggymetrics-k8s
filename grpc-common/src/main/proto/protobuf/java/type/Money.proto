@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+import "protobuf/java/type/BigDecimal.proto";
+
+package protobuf.java.type;
+
+option java_package = "com.github.galleog.protobuf.java.type";
+option java_outer_classname = "MoneyProto";
+
+// Protobuf analog for org.javamoney.moneta.Money.
+message Money {
+    // Required. The currency code.
+    string currency_code = 1;
+    // Required. The monetary amount
+    BigDecimal amount = 2;
+}

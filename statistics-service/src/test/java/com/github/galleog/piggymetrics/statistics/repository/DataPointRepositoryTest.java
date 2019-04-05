@@ -32,6 +32,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
@@ -39,6 +41,9 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import javax.sql.DataSource;
 import java.time.LocalDate;
@@ -51,9 +56,11 @@ import java.util.Optional;
 /**
  * Tests for {@link DataPointRepository}.
  */
-@ActiveProfiles("test")
-@ExtendWith(SpringExtension.class)
 @DataJpaTest
+@ActiveProfiles("test")
+@Testcontainers
+@ExtendWith(SpringExtension.class)
+@AutoConfigureTestDatabase(replace = Replace.NONE)
 class DataPointRepositoryTest {
     private static final String ACCOUNT_NAME = "test";
     private static final LocalDate NOW = LocalDate.now();
@@ -71,6 +78,8 @@ class DataPointRepositoryTest {
     private static final double TOTAL_EXPENSES_AMOUNT = GROCERY_AMOUNT + VACATION_AMOUNT;
     private static final double SAVING_AMOUNT = 5900;
 
+    @Container
+    private static final PostgreSQLContainer POSTGRESQL_CONTAINER = new PostgreSQLContainer();
     private static final DbSetupTracker DB_SETUP_TRACKER = new DbSetupTracker();
 
     @Autowired

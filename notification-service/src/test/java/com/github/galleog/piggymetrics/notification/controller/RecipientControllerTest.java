@@ -11,7 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.galleog.piggymetrics.notification.NotificationServiceApplication;
 import com.github.galleog.piggymetrics.notification.acl.RecipientSettings;
 import com.github.galleog.piggymetrics.notification.domain.Frequency;
 import com.github.galleog.piggymetrics.notification.domain.NotificationSettings;
@@ -28,11 +27,9 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -48,7 +45,6 @@ import java.util.Optional;
 @ActiveProfiles("test")
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(RecipientController.class)
-@ContextConfiguration(classes = NotificationServiceApplication.class)
 @WithMockUser(RecipientControllerTest.ACCOUNT_NAME)
 class RecipientControllerTest {
     static final String ACCOUNT_NAME = "test";
@@ -165,7 +161,6 @@ class RecipientControllerTest {
     }
 
     @TestConfiguration
-    @EnableWebSecurity
     static class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         @Override
         protected void configure(HttpSecurity http) throws Exception {

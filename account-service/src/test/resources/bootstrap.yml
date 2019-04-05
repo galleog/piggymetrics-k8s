@@ -1,10 +1,7 @@
-eureka:
-  client:
-    enabled: false
-
 spring:
   application:
     name: account-service
+
   cloud:
-    config:
+    kubernetes:
       enabled: false

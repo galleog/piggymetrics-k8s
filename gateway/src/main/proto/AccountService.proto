@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "protobuf/java/type/BigDecimal.proto";
+import "protobuf/java/type/Money.proto";
+import "UserService.proto";
+
+package piggymetrics.account;
+
+option java_package = "com.github.galleog.piggymetrics.account.grpc";
+option java_outer_classname = "AccountServiceProto";
+
+// Income or expense item.
+message Item {
+    // Enumeration for item types
+    enum ItemType {
+        INCOME = 0;
+        EXPENSE = 1;
+    }
+
+    // Time period values
+    enum TimePeriod {
+        YEAR = 0;
+        QUARTER = 1;
+        MONTH = 2;
+        DAY = 3;
+        HOUR = 4;
+    }
+
+    // Required. Type of the item.
+    ItemType type = 1;
+    // Required. Item title.
+    string title = 2;
+    // Required. Monetary amount of this item.
+    protobuf.java.type.Money money = 3;
+    // Required. Item period.
+    TimePeriod period = 4;
+    // Required. Item icon.
+    string icon = 5;
+}
+
+// Saving.
+message Saving {
+    // Required. Saving monetary amount
+    protobuf.java.type.Money money = 1;
+    // Required. Saving interest.
+    protobuf.java.type.BigDecimal interest = 2;
+    // Indicates if the saving is a deposit. Default is false.
+    bool deposit = 3;
+    // Indicates if the saving has capitalization. Default is false.
+    bool capitalization = 4;
+}
+
+// Request to get an account.
+message GetAccountRequest {
+    // Required. The name the found account should have.
+    string name = 1;
+}
+
+// Account resource of a user.
+message Account {
+    // Required. The name of the user the account belongs to.
+    string name = 1;
+    // Account incomes and expenses.
+    repeated Item items = 2;
+    // Required. Account savings.
+    Saving saving = 3;
+    // Output only. Date and time when the account was last changed
+    google.protobuf.Timestamp update_time = 4;
+    // Additional note.
+    string note = 5;
+}
+
+// Service to work with accounts.
+service AccountService {
+    // Gets an account by its name.
+    // Possible exception response statuses:
+    //   NOT_FOUND - no account with the requested name is found
+    rpc GetAccount (GetAccountRequest) returns (Account);
+
+    // Creates a new account with the name of the specified user and default parameters.
+    rpc CreateAccount (piggymetrics.auth.User) returns (Account);
+
+    // Updates the specified account.
+    rpc UpdateAccount (Account) returns (Account);
+}

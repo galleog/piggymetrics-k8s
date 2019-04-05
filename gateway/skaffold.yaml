@@ -1,0 +1,16 @@
+apiVersion: skaffold/v1beta5
+kind: Config
+build:
+  artifacts:
+    - image: piggymetrics/gateway
+      context: ../
+      jibGradle:
+        project: gateway
+deploy:
+  helm:
+    releases:
+      - name: pgmgtw
+        chartPath: ../charts/gateway
+        values:
+          image: piggymetrics/gateway
+

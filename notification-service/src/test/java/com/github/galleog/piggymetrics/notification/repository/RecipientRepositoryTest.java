@@ -22,12 +22,17 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import javax.sql.DataSource;
 import java.time.LocalDate;
@@ -39,9 +44,11 @@ import java.util.Optional;
 /**
  * Tests for {@link RecipientRepository}.
  */
-@ActiveProfiles("test")
-@ExtendWith(SpringExtension.class)
 @DataJpaTest
+@ActiveProfiles("test")
+@Testcontainers
+@ExtendWith(SpringExtension.class)
+@AutoConfigureTestDatabase(replace = Replace.NONE)
 class RecipientRepositoryTest {
     private static final String ACCOUNT_1_NAME = "test1";
     private static final String ACCOUNT_2_NAME = "test2";
@@ -51,6 +58,8 @@ class RecipientRepositoryTest {
     private static final LocalDate QUARTER_AGO = LocalDate.now().minusDays(Frequency.QUARTERLY.getKey() + 1);
     private static final LocalDate WEEKLY_AGO = LocalDate.now().minusDays(Frequency.WEEKLY.getKey() + 1);
 
+    @Container
+    private static final PostgreSQLContainer POSTGRESQL_CONTAINER = new PostgreSQLContainer();
     private static final DbSetupTracker DB_SETUP_TRACKER = new DbSetupTracker();
 
     @Autowired

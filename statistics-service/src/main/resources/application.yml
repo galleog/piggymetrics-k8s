@@ -1,0 +1,7 @@
+spring:
+  jackson:
+    default-property-inclusion: non_null
+
+feign:
+  hystrix:
+    enabled: false

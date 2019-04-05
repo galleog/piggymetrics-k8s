@@ -1,9 +1,93 @@
 apply plugin: 'org.springframework.boot'
+apply plugin: 'com.google.protobuf'
+apply plugin: 'com.google.cloud.tools.jib'
 
 description = 'gateway'
 
 dependencies {
-    compile 'org.springframework.cloud:spring-cloud-starter-netflix-zuul'
-    compile 'org.springframework.cloud:spring-cloud-starter-config'
-    compile 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    compile(
+            project(':grpc-common'),
+            'org.springframework.boot:spring-boot-starter-webflux',
+            'org.springframework.boot:spring-boot-starter-security',
+            'org.springframework.boot:spring-boot-starter-actuator',
+            'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
+            'org.springframework.security:spring-security-oauth2-client',
+            'org.springframework.security:spring-security-oauth2-resource-server',
+            'org.springframework.security:spring-security-oauth2-jose',
+            'io.grpc:grpc-netty',
+            'io.grpc:grpc-protobuf',
+            'io.grpc:grpc-stub',
+            'com.salesforce.servicelibs:reactor-grpc-stub',
+            'net.devh:grpc-client-spring-boot-starter',
+            'org.apache.commons:commons-lang3',
+            'org.javamoney:moneta',
+            'org.zalando:jackson-datatype-money',
+            'com.google.guava:guava'
+    )
+
+    compileOnly(
+            'org.projectlombok:lombok'
+    )
+
+    testCompile(
+            'org.springframework.boot:spring-boot-starter-test',
+            'org.springframework.security:spring-security-test',
+            'io.projectreactor:reactor-test',
+            'com.google.protobuf:protobuf-java-util',
+            'io.grpc:grpc-testing',
+            'org.junit.jupiter:junit-jupiter-api'
+    )
+
+    testRuntimeOnly(
+            'org.junit.jupiter:junit-jupiter-engine',
+            'org.junit.vintage:junit-vintage-engine'
+    )
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${ver.protobuf}"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:${ver.grpc}"
+        }
+        reactor {
+            artifact = "com.salesforce.servicelibs:reactor-grpc:${ver.reactiveGrpc}:jdk8@jar"
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {
+                option 'enable_deprecated=false'
+            }
+            reactor {}
+        }
+    }
+}
+
+idea {
+    module {
+        sourceDirs += file("$buildDir/generated/source/proto/main/java")
+        sourceDirs += file("$buildDir/generated/source/proto/main/grpc")
+        sourceDirs += file("$buildDir/generated/source/proto/main/reactor")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/java")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/grpc")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/reactor")
+    }
+}
+
+jib {
+    from {
+        image = 'openjdk:8-jre-alpine'
+    }
+    to {
+        image = "piggymetrics/gateway"
+    }
+    container {
+        jvmFlags = [
+                '-XX:+PrintFlagsFinal',
+                '-XX:MaxRAMPercentage=50.0'
+        ]
+    }
 }

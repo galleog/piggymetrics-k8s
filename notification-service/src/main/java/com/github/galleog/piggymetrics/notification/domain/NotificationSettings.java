@@ -3,10 +3,8 @@ package com.github.galleog.piggymetrics.notification.domain;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.springframework.lang.NonNull;
@@ -21,7 +19,6 @@ import java.time.LocalDate;
  */
 @Getter
 @Embeddable
-@NoArgsConstructor(access = AccessLevel.PACKAGE)
 @JsonDeserialize(builder = NotificationSettings.NotificationSettingsBuilder.class)
 public class NotificationSettings {
     /**
@@ -39,6 +36,10 @@ public class NotificationSettings {
      */
     @Nullable
     private LocalDate lastNotifiedDate;
+
+    @SuppressWarnings("unused")
+    NotificationSettings() {
+    }
 
     @Builder
     @SuppressWarnings("unused")

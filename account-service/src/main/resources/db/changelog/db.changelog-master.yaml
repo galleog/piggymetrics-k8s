@@ -2,12 +2,7 @@ databaseChangeLog:
 - property:
     name: now
     dbms: postgresql
-    value: localtimestamp()
-
-- property:
-    name: now
-    dbms: h2
-    value: current_timestamp()
+    value: localtimestamp
 
 - changeSet:
     id: 1
@@ -17,52 +12,31 @@ databaseChangeLog:
         tableName: accounts
         columns:
         - column:
-            name: id
-            type: int
+            name: name
+            type: varchar(20)
             constraints:
               primaryKey: true
               primaryKeyName: pk_accounts
               nullable: false
         - column:
-            name: name
-            type: varchar(20)
-            constraints:
-              unique: true
-              uniqueConstraintName: uc_accounts_name
-              nullable: false
-        - column:
-            name: last_modified_date
+            name: update_time
             type: datetime
             constraints:
               nullable: false
         - column:
             name: note
             type: varchar(20)
-        - column:
-            name: version
-            type: int
-            constraints:
-              nullable: false
 
 - changeSet:
     id: 2
-    author: galleog
-    changes:
-    - createSequence:
-        sequenceName: account_seq
-        startValue: 10
-        incrementBy: 1
-
-- changeSet:
-    id: 3
     author: galleog
     changes:
     - createTable:
         tableName: savings
         columns:
         - column:
-            name: account_id
-            type: int
+            name: account_name
+            type: varchar(20)
             constraints:
               primaryKey: true
               primaryKeyName: pk_savings
@@ -73,7 +47,7 @@ databaseChangeLog:
             constraints:
               nullable: false
         - column:
-            name: amount
+            name: money_amount
             type: numeric(20,2)
             constraints:
               nullable: false
@@ -94,18 +68,18 @@ databaseChangeLog:
               nullable: false
 
 - changeSet:
-    id: 4
+    id: 3
     author: galleog
     changes:
     - addForeignKeyConstraint:
         baseTableName: savings
-        baseColumnNames: account_id
+        baseColumnNames: account_name
         referencedTableName: accounts
-        referencedColumnNames: id
-        constraintName: fk_savings_account_id
+        referencedColumnNames: name
+        constraintName: fk_savings_account_name
 
 - changeSet:
-    id: 5
+    id: 4
     author: galleog
     changes:
     - createTable:
@@ -119,8 +93,8 @@ databaseChangeLog:
               primaryKeyName: pk_items
               nullable: false
         - column:
-            name: account_id
-            type: int
+            name: account_name
+            type: varchar(20)
             constraints:
               nullable: false
         - column:
@@ -134,7 +108,7 @@ databaseChangeLog:
             constraints:
               nullable: false
         - column:
-            name: amount
+            name: money_amount
             type: numeric(20,2)
             constraints:
               nullable: false
@@ -150,23 +124,23 @@ databaseChangeLog:
               nullable: false
         - column:
             name: item_type
-            type: char(1)
+            type: varchar(7)
             constraints:
               nullable: false
 
 - changeSet:
-    id: 6
+    id: 5
     author: galleog
     changes:
     - addForeignKeyConstraint:
         baseTableName: items
-        baseColumnNames: account_id
+        baseColumnNames: account_name
         referencedTableName: accounts
-        referencedColumnNames: id
-        constraintName: fk_items_account_id
+        referencedColumnNames: name
+        constraintName: fk_items_account_name
 
 - changeSet:
-    id: 7
+    id: 6
     author: galleog
     changes:
     - createSequence:
@@ -175,38 +149,32 @@ databaseChangeLog:
         incrementBy: 1
 
 - changeSet:
-    id: 8
+    id: 7
     author: galleog
     changes:
     - insert:
         tableName: accounts
         columns:
         - column:
-            name: id
-            value: 1
-        - column:
             name: name
             value: demo
         - column:
-            name: last_modified_date
+            name: update_time
             valueDate: ${now}
         - column:
             name: note
             value: demo note
-        - column:
-            name: version
-            value: 1
     - insert:
         tableName: savings
         columns:
         - column:
-            name: account_id
-            value: 1
+            name: account_name
+            value: demo
         - column:
             name: currency_code
             value: USD
         - column:
-            name: amount
+            name: money_amount
             value: 5900
         - column:
             name: interest
@@ -224,8 +192,8 @@ databaseChangeLog:
             name: id
             value: 1
         - column:
-            name: account_id
-            value: 1
+            name: account_name
+            value: demo
         - column:
             name: title
             value: Rent
@@ -233,7 +201,7 @@ databaseChangeLog:
             name: currency_code
             value: USD
         - column:
-            name: amount
+            name: money_amount
             value: 1300
         - column:
             name: period
@@ -243,7 +211,7 @@ databaseChangeLog:
             value: home
         - column:
             name: item_type
-            value: e
+            value: EXPENSE
     - insert:
         tableName: items
         columns:
@@ -251,8 +219,8 @@ databaseChangeLog:
             name: id
             value: 2
         - column:
-            name: account_id
-            value: 1
+            name: account_name
+            value: demo
         - column:
             name: title
             value: Utilities
@@ -260,7 +228,7 @@ databaseChangeLog:
             name: currency_code
             value: USD
         - column:
-            name: amount
+            name: money_amount
             value: 120
         - column:
             name: period
@@ -270,7 +238,7 @@ databaseChangeLog:
             value: utilities
         - column:
             name: item_type
-            value: e
+            value: EXPENSE
     - insert:
         tableName: items
         columns:
@@ -278,8 +246,8 @@ databaseChangeLog:
             name: id
             value: 3
         - column:
-            name: account_id
-            value: 1
+            name: account_name
+            value: demo
         - column:
             name: title
             value: Meal
@@ -287,7 +255,7 @@ databaseChangeLog:
             name: currency_code
             value: USD
         - column:
-            name: amount
+            name: money_amount
             value: 20
         - column:
             name: period
@@ -297,7 +265,7 @@ databaseChangeLog:
             value: meal
         - column:
             name: item_type
-            value: e
+            value: EXPENSE
     - insert:
         tableName: items
         columns:
@@ -305,8 +273,8 @@ databaseChangeLog:
             name: id
             value: 4
         - column:
-            name: account_id
-            value: 1
+            name: account_name
+            value: demo
         - column:
             name: title
             value: Gas
@@ -314,7 +282,7 @@ databaseChangeLog:
             name: currency_code
             value: USD
         - column:
-            name: amount
+            name: money_amount
             value: 240
         - column:
             name: period
@@ -324,7 +292,7 @@ databaseChangeLog:
             value: gas
         - column:
             name: item_type
-            value: e
+            value: EXPENSE
     - insert:
         tableName: items
         columns:
@@ -332,8 +300,8 @@ databaseChangeLog:
             name: id
             value: 5
         - column:
-            name: account_id
-            value: 1
+            name: account_name
+            value: demo
         - column:
             name: title
             value: Vacation
@@ -341,7 +309,7 @@ databaseChangeLog:
             name: currency_code
             value: EUR
         - column:
-            name: amount
+            name: money_amount
             value: 3500
         - column:
             name: period
@@ -351,7 +319,7 @@ databaseChangeLog:
             value: island
         - column:
             name: item_type
-            value: e
+            value: EXPENSE
     - insert:
         tableName: items
         columns:
@@ -359,8 +327,8 @@ databaseChangeLog:
             name: id
             value: 6
         - column:
-            name: account_id
-            value: 1
+            name: account_name
+            value: demo
         - column:
             name: title
             value: Phone
@@ -368,7 +336,7 @@ databaseChangeLog:
             name: currency_code
             value: USD
         - column:
-            name: amount
+            name: money_amount
             value: 30
         - column:
             name: period
@@ -378,7 +346,7 @@ databaseChangeLog:
             value: phone
         - column:
             name: item_type
-            value: e
+            value: EXPENSE
     - insert:
         tableName: items
         columns:
@@ -386,8 +354,8 @@ databaseChangeLog:
             name: id
             value: 7
         - column:
-            name: account_id
-            value: 1
+            name: account_name
+            value: demo
         - column:
             name: title
             value: Gym
@@ -395,7 +363,7 @@ databaseChangeLog:
             name: currency_code
             value: USD
         - column:
-            name: amount
+            name: money_amount
             value: 700
         - column:
             name: period
@@ -405,7 +373,7 @@ databaseChangeLog:
             value: sport
         - column:
             name: item_type
-            value: e
+            value: EXPENSE
     - insert:
         tableName: items
         columns:
@@ -413,8 +381,8 @@ databaseChangeLog:
             name: id
             value: 8
         - column:
-            name: account_id
-            value: 1
+            name: account_name
+            value: demo
         - column:
             name: title
             value: Salary
@@ -422,7 +390,7 @@ databaseChangeLog:
             name: currency_code
             value: USD
         - column:
-            name: amount
+            name: money_amount
             value: 42000
         - column:
             name: period
@@ -432,7 +400,7 @@ databaseChangeLog:
             value: wallet
         - column:
             name: item_type
-            value: i
+            value: INCOME
     - insert:
         tableName: items
         columns:
@@ -440,8 +408,8 @@ databaseChangeLog:
             name: id
             value: 9
         - column:
-            name: account_id
-            value: 1
+            name: account_name
+            value: demo
         - column:
             name: title
             value: Scholarship
@@ -449,7 +417,7 @@ databaseChangeLog:
             name: currency_code
             value: USD
         - column:
-            name: amount
+            name: money_amount
             value: 500
         - column:
             name: period
@@ -459,33 +427,5 @@ databaseChangeLog:
             value: edu
         - column:
             name: item_type
-            value: i
-
-- changeSet:
-    id: 9
-    author: galleog
-    changes:
-    - createTable:
-        tableName: cancel_request
-        columns:
-        - column:
-            name: id
-            type: int
-            constraints:
-              primaryKey: true
-              nullable: false
-        - column:
-            name: type_id
-            type: bigint
-            constraints:
-              nullable: false
-
-- changeSet:
-      id: 10
-      author: galleog
-      changes:
-      - createSequence:
-            sequenceName: cancel_request_seq
-            startValue: 1
-            incrementBy: 1
+            value: INCOME
 

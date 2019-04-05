@@ -9,7 +9,12 @@ import org.springframework.data.domain.Persistable;
 import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
 
-import javax.persistence.*;
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.MappedSuperclass;
+import javax.persistence.Transient;
 import java.io.Serializable;
 
 /**

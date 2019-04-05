@@ -11,60 +11,53 @@ configurations {
 }
 
 dependencies {
-    compile project(':piggymetrics-core')
-    compile 'org.springframework.boot:spring-boot-starter-web'
-    compile 'org.springframework.boot:spring-boot-starter-data-jpa'
-    compile 'org.springframework.boot:spring-boot-starter-security'
-    compile 'org.springframework.cloud:spring-cloud-starter-oauth2'
-    compile 'org.springframework.cloud:spring-cloud-starter-openfeign'
-    compile 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
-    compile 'org.springframework.boot:spring-boot-starter-actuator'
-    compile 'org.springframework.cloud:spring-cloud-netflix-hystrix-stream'
-    compile 'org.springframework.cloud:spring-cloud-starter-kubernetes-config'
-    compile 'org.apache.commons:commons-lang3'
-    compile 'org.javamoney:moneta'
-    compile 'org.jadira.usertype:usertype.core'
-    compile 'org.zalando:jackson-datatype-money'
-    compile 'org.liquibase:liquibase-core'
-    compile 'com.google.guava:guava'
-    compile "org.aspectj:aspectjrt"
-    compile "org.aspectj:aspectjweaver"
+    compile(
+            project(':piggymetrics-core'),
+            'org.springframework.boot:spring-boot-starter-web',
+            'org.springframework.boot:spring-boot-starter-data-jpa',
+            'org.springframework.boot:spring-boot-starter-security',
+            'org.springframework.cloud:spring-cloud-starter-oauth2',
+            'org.springframework.cloud:spring-cloud-starter-openfeign',
+            'org.springframework.boot:spring-boot-starter-actuator',
+            'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
+            'org.apache.commons:commons-lang3',
+            'org.javamoney:moneta',
+            'org.jadira.usertype:usertype.core',
+            'org.zalando:jackson-datatype-money',
+            'org.liquibase:liquibase-core',
+            'com.google.guava:guava',
+            'org.aspectj:aspectjrt',
+            'org.aspectj:aspectjweaver',
+            'org.postgresql:postgresql',
+    )
 
-    compileOnly 'org.projectlombok:lombok'
+    compileOnly(
+            'org.projectlombok:lombok'
+    )
 
     testCompile('org.springframework.boot:spring-boot-starter-test') {
         exclude group: 'junit', module: 'junit'
     }
-    testCompile 'org.springframework.security:spring-security-test'
-    testCompile 'com.h2database:h2'
-    testCompile 'com.ninja-squad:DbSetup'
-    testCompile 'org.assertj:assertj-db'
-    testCompile 'name.falgout.jeffrey.testing.junit5:mockito-extension'
-    testCompile 'org.junit.jupiter:junit-jupiter-api'
-    testCompile 'org.junit.jupiter:junit-jupiter-params'
-
-    testCompileOnly 'org.projectlombok:lombok'
-
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
-
-    ajc "org.aspectj:aspectjtools"
-    aspects "org.springframework:spring-aspects"
-}
-
-def aspectj = { destDir, aspectPath, inpath, classpath ->
-    ant.taskdef(
-            resource: "org/aspectj/tools/ant/taskdefs/aspectjTaskdefs.properties",
-            classpath: configurations.ajc.asPath
+    testCompile(
+            'org.springframework.security:spring-security-test',
+            'org.testcontainers:postgresql',
+            'org.testcontainers:junit-jupiter',
+            'com.ninja-squad:DbSetup',
+            'org.assertj:assertj-db',
+            'name.falgout.jeffrey.testing.junit5:mockito-extension',
+            'org.junit.jupiter:junit-jupiter-api',
+            'org.junit.jupiter:junit-jupiter-params'
     )
 
-    ant.iajc(
-            maxmem: "512m", fork: "true", Xlint: "ignore",
-            destDir: destDir,
-            aspectPath: aspectPath,
-            inpath: inpath,
-            classpath: classpath,
-            source: project.sourceCompatibility,
-            target: project.targetCompatibility
+    testRuntimeOnly(
+            'org.junit.jupiter:junit-jupiter-engine'
+    )
+
+    ajc(
+            "org.aspectj:aspectjtools"
+    )
+    aspects(
+            "org.springframework:spring-aspects"
     )
 }
 

@@ -1,0 +1,47 @@
+# Default values for piggymetrics.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+nameOverride: ""
+fullnameOverride: ""
+
+global:
+  serviceAccount: pod-reader
+
+  postgresql:
+    enabled: true
+    configMap: piggymetrics-postgresql
+    secret: piggymetrics-postgresql
+
+  accountService:
+    host: account-service
+    port: 9090
+
+  authService:
+    host: auth-service
+    port: 9090
+
+postgresql:
+  image:
+    tag: 10.7.0
+    pullPolicy: IfNotPresent
+  service:
+    type: NodePort
+  postgresqlUsername: postgres
+  postgresqlPassword: ""
+  existingSecret: piggymetrics-postgresql
+
+  initdbScripts:
+    account-service-schema.sql: |
+      create schema if not exists account_service;
+
+accountService:
+  enabled: true
+
+gateway:
+  enabled: true
+
+serviceAccount:
+  create: true
+role:
+  create: true

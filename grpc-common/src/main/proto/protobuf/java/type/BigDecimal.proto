@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+import "protobuf/java/type/BigInteger.proto";
+
+package protobuf.java.type;
+
+option java_package = "com.github.galleog.protobuf.java.type";
+option java_outer_classname = "BigDecimalProto";
+
+// Protobuf analog for java.math.BigDecimal.
+message BigDecimal {
+    int32 scale = 1;
+    BigInteger int_val = 2;
+}

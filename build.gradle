@@ -1,27 +1,52 @@
+import org.testcontainers.containers.PostgreSQLContainer
+
+buildscript {
+    dependencies {
+        classpath 'org.testcontainers:postgresql:1.10.6'
+    }
+}
+
 plugins {
-    id 'org.springframework.boot' version '2.0.3.RELEASE' apply false
+    id 'org.springframework.boot' version '2.1.3.RELEASE' apply false
+    id 'com.google.protobuf' version '0.8.8' apply false
+    id 'com.google.cloud.tools.jib' version '1.0.1' apply false
+    id 'nu.studer.jooq' version '3.0.3' apply false
 }
 
 ext {
-    springCloudVersion = 'Finchley.RELEASE'
-    springSecurityOauthVersion = '2.3.0.RELEASE'
-    springCloudKubernetesVersion = '0.3.0.RELEASE'
-    dbsetupVersion = '2.1.0'
-    monetaVersion = '1.2.1'
-    jadiraVersion = '6.0.1.GA'
-    jacksonDatatypeMoneyVersion = '1.0.1'
-    guavaVersion = '21.0'
-    assertjDbVersion = '1.2.0'
-    commonsValidatorVersion = '1.6'
-    junitJupiterVersion = '5.2.0'
-    mockitoExtensionVersion = '1.0.1'
-    commonsIoVersion = '2.6'
-    shedlockVersion = '1.0.0'
-    simpleJavaMailVersion = '5.0.3'
+    ver = [
+            springCloud         : 'Greenwich.RELEASE',
+            springSecurityOauth : '2.3.4.RELEASE',
+            dbsetup             : '2.1.0',
+            moneta              : '1.2.1',
+            jadira              : '6.0.1.GA',
+            jacksonDatatypeMoney: '1.0.1',
+            lombok              : '1.18.4',
+            guava               : '21.0',
+            assertjDb           : '1.2.0',
+            commonsValidator    : '1.6',
+            junitJupiter        : '5.2.0',
+            mockitoExtension    : '1.0.1',
+            commonsIo           : '2.6',
+            shedlock            : '1.0.0',
+            simpleJavaMail      : '5.0.3',
+            testcontainers      : '1.10.6',
+            postgresql          : '42.2.5',
+            grpc                : '1.18.0',
+            reactiveGrpc        : '0.9.0',
+            protobuf            : '3.6.1',
+            grpcSpringBoot      : '2.2.1.RELEASE'
+    ]
+
+    database = [
+            driver  : 'org.testcontainers.jdbc.ContainerDatabaseDriver',
+            url     : 'jdbc:tc:postgresql:10.7-alpine://localhost/databasename?TC_INITFUNCTION=com.github.galleog.liquibase.tc.LiquibaseUpdater::update',
+            username: 'test',
+            password: 'test'
+    ]
 }
 
 allprojects {
-    apply plugin: 'eclipse'
     apply plugin: 'idea'
 
     group = 'com.github.galleog.piggymetrics'
@@ -42,38 +67,69 @@ subprojects {
 
     repositories {
         jcenter()
+        mavenCentral()
         maven { url "https://repo.spring.io/milestone" }
-        maven { url "http://repo.maven.apache.org/maven2" }
     }
 
     dependencyManagement {
         imports {
             mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
-            mavenBom "org.springframework.cloud:spring-cloud-dependencies:$springCloudVersion"
-            mavenBom "org.springframework.cloud:spring-cloud-kubernetes-dependencies:$springCloudKubernetesVersion"
+            mavenBom "org.springframework.cloud:spring-cloud-dependencies:${ver.springCloud}"
         }
 
         dependencies {
-            dependency "org.springframework.security.oauth:spring-security-oauth2:$springSecurityOauthVersion"
-            dependency "com.ninja-squad:DbSetup:$dbsetupVersion"
-            dependency "org.javamoney:moneta:$monetaVersion"
-            dependency "org.jadira.usertype:usertype.core:$jadiraVersion"
-            dependency "org.zalando:jackson-datatype-money:$jacksonDatatypeMoneyVersion"
-            dependency "com.google.guava:guava:$guavaVersion"
-            dependency "org.assertj:assertj-db:$assertjDbVersion"
-            dependency "commons-validator:commons-validator:$commonsValidatorVersion"
-            dependency "org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion"
-            dependency "org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion"
-            dependency "org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion"
-            dependency "name.falgout.jeffrey.testing.junit5:mockito-extension:$mockitoExtensionVersion"
-            dependency "commons-io:commons-io:$commonsIoVersion"
-            dependency "net.javacrumbs.shedlock:shedlock-spring:$shedlockVersion"
-            dependency "net.javacrumbs.shedlock:shedlock-provider-jdbc-template:$shedlockVersion"
-            dependency "org.simplejavamail:simple-java-mail:$simpleJavaMailVersion"
+            dependency "org.springframework.security.oauth:spring-security-oauth2:${ver.springSecurityOauth}"
+            dependency "io.grpc:grpc-netty:${ver.grpc}"
+            dependency "io.grpc:grpc-protobuf:${ver.grpc}"
+            dependency "io.grpc:grpc-stub:${ver.grpc}"
+            dependency "io.grpc:grpc-services:${ver.grpc}"
+            dependency "io.grpc:grpc-testing:${ver.grpc}"
+            dependency "com.google.protobuf:protobuf-java:${ver.protobuf}"
+            dependency "com.google.protobuf:protobuf-java-util:${ver.protobuf}"
+            dependency "com.salesforce.servicelibs:reactor-grpc-stub:${ver.reactiveGrpc}"
+            dependency "com.ninja-squad:DbSetup:${ver.dbsetup}"
+            dependency "org.javamoney:moneta:${ver.moneta}"
+            dependency "org.jadira.usertype:usertype.core:${ver.jadira}"
+            dependency "org.zalando:jackson-datatype-money:${ver.jacksonDatatypeMoney}"
+            dependency "com.google.guava:guava:${ver.guava}"
+            dependency "org.assertj:assertj-db:${ver.assertjDb}"
+            dependency "commons-validator:commons-validator:${ver.commonsValidator}"
+            dependency "org.junit.jupiter:junit-jupiter-api:${ver.junitJupiter}"
+            dependency "org.junit.jupiter:junit-jupiter-engine:${ver.junitJupiter}"
+            dependency "org.junit.jupiter:junit-jupiter-params:${ver.junitJupiter}"
+            dependency "org.junit.vintage:junit-vintage-engine:${ver.junitJupiter}"
+            dependency "name.falgout.jeffrey.testing.junit5:mockito-extension:${ver.mockitoExtension}"
+            dependency "commons-io:commons-io:${ver.commonsIo}"
+            dependency "net.javacrumbs.shedlock:shedlock-spring:${ver.shedlock}"
+            dependency "net.javacrumbs.shedlock:shedlock-provider-jdbc-template:${ver.shedlock}"
+            dependency "org.simplejavamail:simple-java-mail:${ver.simpleJavaMail}"
+            dependency "org.projectlombok:lombok:${ver.lombok}"
+            dependency "org.testcontainers:postgresql:${ver.testcontainers}"
+            dependency "org.testcontainers:junit-jupiter:${ver.testcontainers}"
+            dependency "org.postgresql:postgresql:${ver.postgresql}"
+            dependency "net.devh:grpc-server-spring-boot-starter:${ver.grpcSpringBoot}"
+            dependency "net.devh:grpc-client-spring-boot-starter:${ver.grpcSpringBoot}"
         }
     }
 
+    ext.aspectj = { destDir, aspectPath, inpath, classpath ->
+        ant.taskdef(
+                resource: "org/aspectj/tools/ant/taskdefs/aspectjTaskdefs.properties",
+                classpath: configurations.ajc.asPath
+        )
+
+        ant.iajc(
+                maxmem: "512m", fork: "true", Xlint: "ignore",
+                destDir: destDir,
+                aspectPath: aspectPath,
+                inpath: inpath,
+                classpath: classpath,
+                source: project.sourceCompatibility,
+                target: project.targetCompatibility
+        )
+    }
+
     test {
-       useJUnitPlatform()
+        useJUnitPlatform()
     }
 }

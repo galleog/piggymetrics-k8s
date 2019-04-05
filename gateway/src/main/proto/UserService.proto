@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package piggymetrics.auth;
+
+option java_package = "com.github.galleog.piggymetrics.auth.grpc";
+option java_outer_classname = "UserServiceProto";
+
+/**
+ * User of the system.
+ */
+message User {
+    string user_name = 1; // user's name
+    string password = 2; // user's password
+}
+
+/**
+ * Service to work with users.
+ */
+service UserService {
+    /**
+     * Creates a new user.
+     */
+    rpc CreateUser (User) returns (google.protobuf.Empty);
+}

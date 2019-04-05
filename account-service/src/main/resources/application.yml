@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DATABASE_HOST:localhost}:${DATABASE_PORT:5432}/${DATABASE_NAME:piggymetrics}
+    username: ${DATABASE_USER:postgres}
+    password: ${DATABASE_PASSWORD:secret}
+
+    hikari:
+      maximum-pool-size: 3
+
+  jmx:
+    enabled: false
+
+  jooq:
+    sql-dialect: postgres_10
+
+  liquibase:
+    default-schema: account_service
+
+grpc:
+  server:
+    port: 9090
+
+  client:
+    auth-service:
+      address: "static://${AUTH_SERVICE_HOST:localhost}:${AUTH_SERVER_PORT:9090}"
+      negotiationType: PLAINTEXT

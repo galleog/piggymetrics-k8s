@@ -1,36 +1,53 @@
 package com.github.galleog.piggymetrics.auth.service;
 
 import com.github.galleog.piggymetrics.auth.domain.User;
+import com.github.galleog.piggymetrics.auth.grpc.ReactorUserServiceGrpc;
+import com.github.galleog.piggymetrics.auth.grpc.UserServiceProto;
 import com.github.galleog.piggymetrics.auth.repository.UserRepository;
+import com.google.protobuf.Empty;
+import io.grpc.Status;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.Validate;
-import org.springframework.lang.NonNull;
-import org.springframework.stereotype.Service;
+import net.devh.boot.grpc.server.service.GrpcService;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * Service to work with {@link User users}.
  */
 @Slf4j
-@Service
+@GrpcService
 @RequiredArgsConstructor
-public class UserService {
+public class UserService extends ReactorUserServiceGrpc.UserServiceImplBase {
     private final UserRepository repository;
 
-    /**
-     * Creates a new user.
-     *
-     * @param user the mandatory user attributes
-     * @throws NullPointerException     if the user is {@code null}
-     * @throws IllegalArgumentException if a user with the same username already exists
-     */
+    @Override
+    public Mono<Empty> createUser(Mono<UserServiceProto.User> request) {
+        return request.publishOn(Schedulers.elastic())
+                .doOnNext(this::createUserInternal)
+                .thenReturn(Empty.newBuilder().build());
+    }
+
     @Transactional
-    public void create(@NonNull User user) {
-        Validate.notNull(user);
+    private void createUserInternal(UserServiceProto.User userProto) {
+        User user;
+        try {
+            user = User.builder()
+                    .username(userProto.getUserName())
+                    .password(userProto.getPassword())
+                    .build();
+        } catch (NullPointerException | IllegalArgumentException e) {
+            throw Status.INVALID_ARGUMENT
+                    .withDescription(e.getMessage())
+                    .withCause(e)
+                    .asRuntimeException();
+        }
 
         repository.findById(user.getUsername()).ifPresent(u -> {
-            throw new IllegalArgumentException("User " + user.getUsername() + " already exists");
+            throw Status.ALREADY_EXISTS
+                    .withDescription("User " + user.getUsername() + " already exists")
+                    .asRuntimeException();
         });
         repository.save(user);
 

@@ -1,0 +1,20 @@
+description = 'liquibase-tc'
+
+jar {
+    manifest {
+        attributes(
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version
+        )
+    }
+}
+
+dependencies {
+    implementation(
+            'org.liquibase:liquibase-core'
+    )
+
+    compileOnly(
+            'org.projectlombok:lombok'
+    )
+}

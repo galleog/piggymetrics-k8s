@@ -1,51 +1,84 @@
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "account-service.fullname" . }}
+  name: {{ include "account-service.fullname" . }}
   labels:
-    app: {{ template "account-service.name" . }}
-    chart: {{ template "account-service.chart" . }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "account-service.name" . }}
+    helm.sh/chart: {{ include "account-service.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ template "account-service.name" . }}
-      release: {{ .Release.Name }}
+      app.kubernetes.io/name: {{ include "account-service.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
+      annotations:
+        sidecar.istio.io/inject: "true"
       labels:
-        app: {{ template "account-service.name" . }}
-        release: {{ .Release.Name }}
+        app.kubernetes.io/name: {{ include "account-service.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      serviceAccountName: {{ default "default" .Values.global.serviceAccount }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.postgresql.configMap }}
+                  key: postgresql-host
+            - name: DATABASE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.postgresql.configMap }}
+                  key: postgresql-port
+            - name: DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.postgresql.configMap }}
+                  key: postgresql-database
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.postgresql.secret }}
+                  key: postgresql-user
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.postgresql.secret }}
+                  key: postgresql-password
+            - name: AUTH_SERVICE_HOST
+              value: {{ .Values.global.authService.host | quote }}
+            - name: AUTH_SERVICE_PORT
+              value: {{ .Values.global.authService.port | quote }}
           ports:
-            - name: http
-              containerPort: 80
+            - name: grpc
+              containerPort: 9090
               protocol: TCP
           livenessProbe:
-            httpGet:
-              path: /
-              port: http
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=127.0.0.1:9090", "-service=piggymetrics.account.AccountService"]
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           readinessProbe:
-            httpGet:
-              path: /
-              port: http
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=127.0.0.1:9090", "-service=piggymetrics.account.AccountService"]
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
           resources:
-{{ toYaml .Values.resources | indent 12 }}
-    {{- with .Values.nodeSelector }}
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
       nodeSelector:
-{{ toYaml . | indent 8 }}
-    {{- end }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     {{- with .Values.affinity }}
       affinity:
-{{ toYaml . | indent 8 }}
+        {{- toYaml . | nindent 8 }}
     {{- end }}
     {{- with .Values.tolerations }}
       tolerations:
-{{ toYaml . | indent 8 }}
+        {{- toYaml . | nindent 8 }}
     {{- end }}

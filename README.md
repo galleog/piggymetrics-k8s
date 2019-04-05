@@ -1,14 +1,9 @@
-[![Build Status](https://travis-ci.org/sqshq/PiggyMetrics.svg?branch=master)](https://travis-ci.org/sqshq/PiggyMetrics)
-[![codecov.io](https://codecov.io/github/sqshq/PiggyMetrics/coverage.svg?branch=master)](https://codecov.io/github/sqshq/PiggyMetrics?branch=master)
-[![GitHub license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/sqshq/PiggyMetrics/blob/master/LICENCE)
-[![Join the chat at https://gitter.im/sqshq/PiggyMetrics](https://badges.gitter.im/sqshq/PiggyMetrics.svg)](https://gitter.im/sqshq/PiggyMetrics?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![GitHub license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/galleog/piggymetrics-k8s/blob/k8s/LICENCE)
 
 # Piggy Metrics
 
-**A simple way to deal with personal finances**
-
-This is a [proof-of-concept application](http://my-piggymetrics.rhcloud.com), which demonstrates [Microservice Architecture Pattern](http://martinfowler.com/microservices/) using Spring Boot, Spring Cloud and Docker.
-With a pretty neat user interface, by the way.
+This project demonstrates [Microservice Architecture Pattern](http://martinfowler.com/microservices/) using Spring Boot, Spring Cloud, Kubernetes and gRPC.
+It is derived from the MIT-licensed code of Alexander Lukyanchikov (http://sqshq.com), [PiggyMetrics](https://github.com/sqshq/PiggyMetrics).
 
 ![](https://cloud.githubusercontent.com/assets/6069066/13864234/442d6faa-ecb9-11e5-9929-34a9539acde0.png)
 ![Piggy Metrics](https://cloud.githubusercontent.com/assets/6069066/13830155/572e7552-ebe4-11e5-918f-637a49dff9a2.gif)
@@ -252,6 +247,3 @@ All Spring Boot applications require already running [Config Server](https://git
 
 Also, Service Discovery mechanism needs some time after all applications startup. Any service is not available for discovery by clients until the instance, the Eureka server and the client all have the same metadata in their local cache, so it could take 3 heartbeats. Default heartbeat period is 30 seconds.
 
-## Feedback welcome
-
-PiggyMetrics is open source, and would greatly appreciate your help. Feel free to contact me with any questions.

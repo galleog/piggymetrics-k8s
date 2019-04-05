@@ -1,0 +1,23 @@
+server:
+  port: 8080
+
+spring:
+  jmx:
+    enabled: false
+
+  webflux:
+    static-path-pattern: "/**"
+
+  resources:
+    static-locations: "classpath:/static"
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      WRITE_DATES_AS_TIMESTAMPS: false
+
+grpc:
+  client:
+    account-service:
+      address: "dns:///${ACCOUNT_SERVICE_HOST:localhost}:${ACCOUNT_SERVER_PORT:9090}"
+      negotiationType: PLAINTEXT

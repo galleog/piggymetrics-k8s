@@ -1,19 +1,19 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "account-service.fullname" . }}
+  name: {{ .Values.global.accountService.host }}
   labels:
-    app: {{ template "account-service.name" . }}
-    chart: {{ template "account-service.chart" . }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "account-service.name" . }}
+    helm.sh/chart: {{ include "account-service.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: http
+    - name: grpc
+      port: {{ .Values.global.accountService.port }}
+      targetPort: grpc
       protocol: TCP
-      name: http
   selector:
-    app: {{ template "account-service.name" . }}
-    release: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ include "account-service.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}

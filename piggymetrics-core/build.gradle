@@ -12,18 +12,32 @@ jar {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-json'
-    implementation 'org.apache.commons:commons-lang3'
-    implementation 'org.projectlombok:lombok'
+    implementation(
+            'org.springframework.boot:spring-boot-starter-data-jpa',
+            'org.springframework.boot:spring-boot-starter-json',
+            'org.apache.commons:commons-lang3',
+            'com.google.guava:guava'
+    )
+    
+    compileOnly(
+            'org.projectlombok:lombok'
+    )
 
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
         exclude group: 'junit', module: 'junit'
     }
-    testImplementation 'com.h2database:h2'
-    testImplementation 'com.ninja-squad:DbSetup'
-    testImplementation 'org.assertj:assertj-db'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation(
+            'com.h2database:h2',
+            'com.ninja-squad:DbSetup',
+            'org.assertj:assertj-db',
+            'org.junit.jupiter:junit-jupiter-api'
+    )
 
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+    testCompileOnly(
+            'org.projectlombok:lombok'
+    )
+
+    testRuntimeOnly(
+            'org.junit.jupiter:junit-jupiter-engine'
+    )
 }

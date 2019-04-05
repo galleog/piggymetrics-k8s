@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +26,9 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import javax.sql.DataSource;
 import java.util.Optional;
@@ -31,12 +36,17 @@ import java.util.Optional;
 /**
  * Tests for {@link UserRepository}.
  */
-@ActiveProfiles("test")
-@ExtendWith(SpringExtension.class)
 @DataJpaTest
+@ActiveProfiles("test")
+@Testcontainers
+@ExtendWith(SpringExtension.class)
+@AutoConfigureTestDatabase(replace = Replace.NONE)
 class UserRepositoryTest {
     private static final String USERNAME = "test";
     private static final String PASSWORD = "secret";
+
+    @Container
+    private static final PostgreSQLContainer POSTGRESQL_CONTAINER = new PostgreSQLContainer();
 
     @Autowired
     private DataSource dataSource;

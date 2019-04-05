@@ -1,29 +1,102 @@
 apply plugin: 'org.springframework.boot'
+apply plugin: 'com.google.protobuf'
 
 description = 'auth-service'
 
-dependencies {
-    compile 'org.springframework.boot:spring-boot-starter-web'
-    compile 'org.springframework.boot:spring-boot-starter-data-jpa'
-    compile 'org.springframework.boot:spring-boot-starter-security'
-    compile 'org.springframework.security.oauth:spring-security-oauth2'
-    compile 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
-    compile 'org.springframework.cloud:spring-cloud-starter-kubernetes-config'
-    compile 'org.apache.commons:commons-lang3'
-    compile 'org.liquibase:liquibase-core'
-    compile 'com.google.guava:guava'
-
-    compileOnly 'org.projectlombok:lombok'
-
-    testCompile('org.springframework.boot:spring-boot-starter-test') {
-        exclude group: 'junit', module: 'junit'
+configurations {
+    ajc
+    aspects
+    compile {
+        extendsFrom aspects
     }
-    testCompile 'org.springframework.security:spring-security-test'
-    testCompile 'com.h2database:h2'
-    testCompile 'com.ninja-squad:DbSetup'
-    testCompile 'org.assertj:assertj-db'
-    testCompile 'name.falgout.jeffrey.testing.junit5:mockito-extension'
-    testCompile 'org.junit.jupiter:junit-jupiter-api'
+}
 
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+dependencies {
+    compile(
+            'org.springframework.boot:spring-boot-starter-web',
+            'org.springframework.boot:spring-boot-starter-data-jpa',
+            'org.springframework.boot:spring-boot-starter-security',
+            'org.springframework.security.oauth:spring-security-oauth2',
+            'org.springframework.boot:spring-boot-starter-actuator',
+            'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
+            'io.grpc:grpc-netty',
+            'io.grpc:grpc-protobuf',
+            'io.grpc:grpc-stub',
+            'com.salesforce.servicelibs:reactor-grpc-stub',
+            'net.devh:grpc-server-spring-boot-starter',
+            'org.apache.commons:commons-lang3',
+            'org.liquibase:liquibase-core',
+            'com.google.guava:guava',
+            'org.aspectj:aspectjrt',
+            'org.aspectj:aspectjweaver',
+            'org.postgresql:postgresql'
+    )
+
+    compileOnly(
+            'org.projectlombok:lombok'
+    )
+
+    testCompile(
+            'org.springframework.boot:spring-boot-starter-test',
+            'io.projectreactor:reactor-test',
+            'org.testcontainers:postgresql',
+            'org.testcontainers:junit-jupiter',
+            'com.ninja-squad:DbSetup',
+            'org.assertj:assertj-db',
+            'name.falgout.jeffrey.testing.junit5:mockito-extension',
+            'org.junit.jupiter:junit-jupiter-api'
+    )
+
+    testRuntimeOnly(
+            'org.junit.jupiter:junit-jupiter-engine'
+    )
+
+    ajc(
+            "org.aspectj:aspectjtools"
+    )
+    aspects(
+            "org.springframework:spring-aspects"
+    )
+}
+
+compileJava {
+    doLast {
+        aspectj project.sourceSets.main.output.classesDir.absolutePath,
+                configurations.aspects.asPath,
+                project.sourceSets.main.output.classesDir.absolutePath,
+                configurations.compile.asPath
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${ver.protobuf}"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:${ver.grpc}"
+        }
+        reactor {
+            artifact = "com.salesforce.servicelibs:reactor-grpc:${ver.reactiveGrpc}:jdk8@jar"
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {
+                option 'enable_deprecated=false'
+            }
+            reactor {}
+        }
+    }
+}
+
+idea {
+    module {
+        sourceDirs += file("$buildDir/generated/source/proto/main/java")
+        sourceDirs += file("$buildDir/generated/source/proto/main/grpc")
+        sourceDirs += file("$buildDir/generated/source/proto/main/reactor")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/java")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/grpc")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/reactor")
+    }
 }

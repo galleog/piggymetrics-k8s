@@ -1,0 +1,49 @@
+apply plugin: 'java-library'
+apply plugin: 'com.google.protobuf'
+
+description = 'grpc-common'
+
+jar {
+    manifest {
+        attributes(
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version
+        )
+    }
+}
+
+dependencies {
+    implementation(
+            'com.google.protobuf:protobuf-java',
+            'io.grpc:grpc-stub',
+            'com.google.guava:guava',
+            'org.javamoney:moneta',
+            'org.slf4j:slf4j-api'
+    )
+    
+    compileOnly(
+            'org.projectlombok:lombok'
+    )
+
+    testImplementation(
+            'org.assertj:assertj-core',
+            'org.junit.jupiter:junit-jupiter-api'
+    )
+
+    testRuntimeOnly(
+            'org.junit.jupiter:junit-jupiter-engine'
+    )
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${ver.protobuf}"
+    }
+}
+
+idea {
+    module {
+        sourceDirs += file("$buildDir/generated/source/proto/main/java")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/java")
+    }
+}

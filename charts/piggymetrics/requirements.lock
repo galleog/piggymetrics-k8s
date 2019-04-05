@@ -1,0 +1,12 @@
+dependencies:
+- name: postgresql
+  repository: https://kubernetes-charts.storage.googleapis.com
+  version: 3.9.5
+- name: account-service
+  repository: file://../account-service
+  version: 0.1.0
+- name: gateway
+  repository: file://../gateway
+  version: 0.1.0
+digest: sha256:dab31391cf6cf081c7c13b0a324061ae349dcc100df24f3511d84498954a7d08
+generated: 2019-02-15T13:21:00.241572409+03:00

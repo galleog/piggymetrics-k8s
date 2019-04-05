@@ -2,9 +2,13 @@ package com.github.galleog.piggymetrics.core.enums.json;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.BeanProperty;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.deser.ContextualDeserializer;
 import com.fasterxml.jackson.databind.deser.std.StdScalarDeserializer;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.galleog.piggymetrics.core.enums.Enum;
 import org.apache.commons.lang3.Validate;
 
@@ -34,19 +38,18 @@ public class EnumDeserializer<E extends Enum<?>> extends StdScalarDeserializer<E
     }
 
     @Override
-    public JsonDeserializer<?> createContextual(DeserializationContext ctxt, BeanProperty property)
-            throws JsonMappingException {
+    public JsonDeserializer<?> createContextual(DeserializationContext ctxt, BeanProperty property) {
         if (property != null) {
             // get enumeration class
             Class<?> cls = property.getType().getRawClass();
             Validate.validState(Enum.class.isAssignableFrom(cls), "Class %s must be a subclass of Enum", cls.getName());
 
-            JavaType[] types = ctxt.getTypeFactory().findTypeParameters(cls, Enum.class);
+            TypeFactory typeFactory = ctxt.getTypeFactory();
+            JavaType[] types = typeFactory.findTypeParameters(typeFactory.constructType(cls), Enum.class);
             if (types == null || types.length != 1) {
                 throw new IllegalStateException("Can not find the type parameter for Enum of type " + cls.getName());
             }
             return new EnumDeserializer<E>(cls, types[0]);
-
         }
         return this;
     }
@@ -55,7 +58,7 @@ public class EnumDeserializer<E extends Enum<?>> extends StdScalarDeserializer<E
     @SuppressWarnings("unchecked")
     public E deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
         if (!p.getCurrentToken().isScalarValue()) {
-            throw ctxt.wrongTokenException(p, JsonToken.START_OBJECT, "Scalar value expected");
+            ctxt.reportWrongTokenException(keyType, JsonToken.START_OBJECT, "Scalar value expected");
         }
 
         Object key = ctxt.readValue(p, keyType);

@@ -3,43 +3,52 @@ apply plugin: 'org.springframework.boot'
 description = 'notification-service'
 
 dependencies {
-    compile project(':piggymetrics-core')
-    compile 'org.springframework.boot:spring-boot-starter-web'
-    compile 'org.springframework.boot:spring-boot-starter-data-jpa'
-    compile 'org.springframework.boot:spring-boot-starter-security'
-    compile 'org.springframework.cloud:spring-cloud-starter-oauth2'
-    compile 'org.springframework.cloud:spring-cloud-starter-openfeign'
-    compile 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
-    compile 'org.springframework.boot:spring-boot-starter-actuator'
-    compile 'org.springframework.cloud:spring-cloud-netflix-hystrix-stream'
-    compile 'org.springframework.cloud:spring-cloud-starter-kubernetes-config'
-    compile 'com.querydsl:querydsl-jpa'
-    compile 'org.springframework.boot:spring-boot-starter-mail'
-    compile 'org.apache.commons:commons-lang3'
-    compile('commons-validator:commons-validator') {
+    implementation(
+            project(':piggymetrics-core'),
+            'org.springframework.boot:spring-boot-starter-web',
+            'org.springframework.boot:spring-boot-starter-data-jpa',
+            'org.springframework.boot:spring-boot-starter-security',
+            'org.springframework.cloud:spring-cloud-starter-oauth2',
+            'org.springframework.cloud:spring-cloud-starter-openfeign',
+            'org.springframework.boot:spring-boot-starter-actuator',
+            'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
+            'org.springframework.boot:spring-boot-starter-mail',
+            'org.apache.commons:commons-lang3',
+            'org.liquibase:liquibase-core',
+            'com.google.guava:guava',
+            'net.javacrumbs.shedlock:shedlock-spring',
+            'net.javacrumbs.shedlock:shedlock-provider-jdbc-template',
+            'org.slf4j:jcl-over-slf4j',
+            'org.postgresql:postgresql'
+    )
+    implementation('commons-validator:commons-validator') {
         exclude module: 'commons-logging'
     }
-    compile 'org.liquibase:liquibase-core'
-    compile 'com.google.guava:guava'
-    compile 'net.javacrumbs.shedlock:shedlock-spring'
-    compile 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template'
-    compile 'org.slf4j:jcl-over-slf4j'
 
-    compileOnly 'org.projectlombok:lombok'
+    compileOnly(
+            'org.projectlombok:lombok'
+    )
 
-    testCompile('org.springframework.boot:spring-boot-starter-test') {
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
         exclude group: 'junit', module: 'junit'
     }
-    testCompile 'org.springframework.security:spring-security-test'
-    testCompile 'com.h2database:h2'
-    testCompile 'com.ninja-squad:DbSetup'
-    testCompile 'org.assertj:assertj-db'
-    testCompile 'name.falgout.jeffrey.testing.junit5:mockito-extension'
-    testCompile 'org.junit.jupiter:junit-jupiter-api'
-    testCompile 'commons-io:commons-io'
-    testCompile 'org.simplejavamail:simple-java-mail'
+    testImplementation(
+            'org.springframework.security:spring-security-test',
+            'org.testcontainers:postgresql',
+            'org.testcontainers:junit-jupiter',
+            'com.ninja-squad:DbSetup',
+            'org.assertj:assertj-db',
+            'name.falgout.jeffrey.testing.junit5:mockito-extension',
+            'org.junit.jupiter:junit-jupiter-api',
+            'commons-io:commons-io',
+            'org.simplejavamail:simple-java-mail'
+    )
 
-    testCompileOnly 'org.projectlombok:lombok'
+    testCompileOnly(
+            'org.projectlombok:lombok'
+    )
 
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+    testRuntimeOnly(
+            'org.junit.jupiter:junit-jupiter-engine'
+    )
 }

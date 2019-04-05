@@ -1,0 +1,4 @@
+logging:
+  level:
+    com.github.galleog.piggymetrics: DEBUG
+
