@@ -9,7 +9,6 @@ pluginManagement {
 
 rootProject.name = 'piggymetrics-k8s'
 
-include ':piggymetrics-build'
 include ':piggymetrics-core'
 include ':gateway'
 include ':auth-service'
@@ -19,7 +18,6 @@ include ':notification-service'
 include ':grpc-common'
 include 'liquibase-tc'
 
-project(':piggymetrics-build').projectDir = "$rootDir/buildSrc" as File
 project(':piggymetrics-core').projectDir = "$rootDir/piggymetrics-core" as File
 project(':gateway').projectDir = "$rootDir/gateway" as File
 project(':auth-service').projectDir = "$rootDir/auth-service" as File
