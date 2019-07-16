@@ -6,14 +6,13 @@ import static com.github.galleog.protobuf.java.type.converter.Converters.timesta
 
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
 import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc;
-import com.github.galleog.piggymetrics.auth.grpc.UserServiceProto;
-import com.github.galleog.piggymetrics.gateway.dto.Account;
-import com.github.galleog.piggymetrics.gateway.dto.Item;
-import com.github.galleog.piggymetrics.gateway.dto.Saving;
-import com.github.galleog.piggymetrics.gateway.dto.User;
+import com.github.galleog.piggymetrics.gateway.model.account.Account;
+import com.github.galleog.piggymetrics.gateway.model.account.Item;
+import com.github.galleog.piggymetrics.gateway.model.account.Saving;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Converter;
 import net.devh.boot.grpc.client.inject.GrpcClient;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -61,31 +60,19 @@ public class AccountHandler {
     }
 
     /**
-     * Creates a new account with the name of a user passed in the request body and default parameters.
-     *
-     * @param request the server request
-     * @return the created account
-     */
-    public Mono<ServerResponse> createNewAccount(ServerRequest request) {
-        Mono<UserServiceProto.User> userMono = request.bodyToMono(User.class)
-                .map(this::toUserProto);
-        return userMono.compose(accountServiceStub::createAccount)
-                .flatMap(account -> ServerResponse.status(HttpStatus.CREATED)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .syncBody(toAccount(account)));
-    }
-
-    /**
      * Updates the account of the current principal.
      *
      * @param request the server request
-     * @return {@link HttpStatus#NO_CONTENT}, or {@link HttpStatus#NOT_FOUND} if there is no account for the current principal
+     * @return the updated account, or {@link HttpStatus#NOT_FOUND} if there is no account for the current principal
      */
     public Mono<ServerResponse> updateCurrentAccount(ServerRequest request) {
-        Mono<AccountServiceProto.Account> accountMono = Mono.zip(request.principal(), request.bodyToMono(Account.class))
-                .map(tuple -> toAccountProto(tuple.getT1().getName(), tuple.getT2()));
-        return accountMono.compose(accountServiceStub::updateAccount)
-                .flatMap(account -> ServerResponse.noContent().build());
+        Mono<Account> mono = Mono.zip(request.principal(), request.bodyToMono(Account.class))
+                .map(tuple -> toAccountProto(tuple.getT1().getName(), tuple.getT2()))
+                .compose(accountServiceStub::updateAccount)
+                .map(this::toAccount);
+        return ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(mono, Account.class);
     }
 
     private Mono<ServerResponse> getAccountByName(Mono<String> nameMono) {
@@ -94,10 +81,11 @@ public class AccountHandler {
                         .setName(name)
                         .build()
         );
-        return req.compose(accountServiceStub::getAccount)
-                .flatMap(account -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .syncBody(toAccount(account)));
+        Mono<Account> accountMono = req.compose(accountServiceStub::getAccount)
+                .map(this::toAccount);
+        return ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(accountMono, Account.class);
     }
 
     private AccountServiceProto.Account toAccountProto(String name, Account account) {
@@ -105,7 +93,7 @@ public class AccountHandler {
                 .setName(name)
                 .addAllItems(account.getItems().stream()
                         .map(ITEM_CONVERTER::convert)
-                        .collect(Collectors.toSet()))
+                        .collect(Collectors.toList()))
                 .setSaving(SAVING_CONVERTER.convert(account.getSaving()));
         if (account.getNote() != null) {
             builder.setNote(account.getNote());
@@ -114,22 +102,19 @@ public class AccountHandler {
     }
 
     private Account toAccount(AccountServiceProto.Account account) {
-        return Account.builder()
+        Account.AccountBuilder builder = Account.builder()
                 .name(account.getName())
                 .items(account.getItemsList().stream()
                         .map(item -> ITEM_CONVERTER.reverse().convert(item))
                         .collect(Collectors.toSet()))
-                .saving(SAVING_CONVERTER.reverse().convert(account.getSaving()))
-                .updateTime(timestampConverter().reverse().convert(account.getUpdateTime()))
-                .note(account.getNote())
-                .build();
-    }
-
-    private UserServiceProto.User toUserProto(User user) {
-        return UserServiceProto.User.newBuilder()
-                .setUserName(user.getUsername())
-                .setPassword(user.getPassword())
-                .build();
+                .saving(SAVING_CONVERTER.reverse().convert(account.getSaving()));
+        if (account.hasUpdateTime()) {
+            builder.updateTime(timestampConverter().reverse().convert(account.getUpdateTime()));
+        }
+        if (StringUtils.isNotEmpty(account.getNote())) {
+            builder.note(account.getNote());
+        }
+        return builder.build();
     }
 
     private static final class ItemConverter extends Converter<Item, AccountServiceProto.Item> {

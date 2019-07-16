@@ -2,18 +2,17 @@ package com.github.galleog.piggymetrics.gateway.handler;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
 
-import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc;
-import com.github.galleog.piggymetrics.gateway.dto.User;
+import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc.AccountServiceImplBase;
+import com.github.galleog.piggymetrics.auth.grpc.ReactorUserServiceGrpc.UserServiceImplBase;
+import com.github.galleog.piggymetrics.gateway.model.auth.User;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import io.grpc.inprocess.InProcessServerBuilder;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit4.SpringRunner;
 import reactor.core.publisher.Mono;
 
@@ -22,25 +21,16 @@ import reactor.core.publisher.Mono;
  */
 @RunWith(SpringRunner.class)
 public class RestExceptionHandlerTest extends BaseRouterTest {
-    private ReactorAccountServiceGrpc.AccountServiceImplBase accountService;
-
-    @Before
-    public void setUp() throws Exception {
-        accountService = spy(new ReactorAccountServiceGrpc.AccountServiceImplBase() {
-        });
-
-        grpcCleanup.register(InProcessServerBuilder.forName(AccountHandler.ACCOUNT_SERVICE)
-                .directExecutor()
-                .addService(accountService)
-                .build()
-                .start());
-    }
+    private static final String ACCOUNT_NAME = "test";
+    private static final String PASSWORD = "secret";
 
     /**
      * Test for gRPC {@link Status#NOT_FOUND}.
      */
     @Test
-    public void shouldReturnNotFoundIfStatusNotFoundThrown() {
+    @WithMockUser(ACCOUNT_NAME)
+    public void shouldReturnNotFoundIfStatusNotFoundThrown() throws Exception {
+        AccountServiceImplBase accountService = spyGrpcService(AccountServiceImplBase.class, AccountHandler.ACCOUNT_SERVICE);
         StatusRuntimeException ex = Status.NOT_FOUND.asRuntimeException();
         doReturn(Mono.error(ex)).when(accountService).getAccount(any());
 
@@ -60,16 +50,17 @@ public class RestExceptionHandlerTest extends BaseRouterTest {
      * Test for gRPC {@link Status#ALREADY_EXISTS}.
      */
     @Test
-    public void shouldReturnBadRequestIfStatusAlreadyExistsThrown() {
+    public void shouldReturnBadRequestIfStatusAlreadyExistsThrown() throws Exception {
+        UserServiceImplBase userService = spyGrpcService(UserServiceImplBase.class, UserHandler.AUTH_SERVICE);
         StatusRuntimeException ex = Status.ALREADY_EXISTS.asRuntimeException();
-        doReturn(Mono.error(ex)).when(accountService).createAccount(any());
+        doReturn(Mono.error(ex)).when(userService).createUser(any());
 
         User user = User.builder()
                 .username(ACCOUNT_NAME)
                 .password(PASSWORD)
                 .build();
         webClient.post()
-                .uri("/accounts")
+                .uri("/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .syncBody(user)
                 .exchange()
@@ -82,14 +73,14 @@ public class RestExceptionHandlerTest extends BaseRouterTest {
     @Test
     public void shouldReturnBadRequestIfCodecExceptionIsThrown() {
         webClient.post()
-                .uri("/accounts")
+                .uri("/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .syncBody("{\"username\": \"test\", \"password\": \"\"}")
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.timestamp").isNotEmpty()
-                .jsonPath("$.path").isEqualTo("/accounts")
+                .jsonPath("$.path").isEqualTo("/users")
                 .jsonPath("$.status").isEqualTo(HttpStatus.BAD_REQUEST.value())
                 .jsonPath("$.error").isEqualTo(HttpStatus.BAD_REQUEST.getReasonPhrase())
                 .jsonPath("$.message").isNotEmpty();

@@ -15,6 +15,7 @@ jar {
 dependencies {
     implementation(
             'com.google.protobuf:protobuf-java',
+            'io.grpc:grpc-protobuf',
             'io.grpc:grpc-stub',
             'com.google.guava:guava',
             'org.javamoney:moneta',

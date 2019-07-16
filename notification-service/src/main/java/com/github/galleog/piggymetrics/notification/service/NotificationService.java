@@ -1,16 +1,24 @@
 package com.github.galleog.piggymetrics.notification.service;
 
-import com.github.galleog.piggymetrics.notification.client.AccountServiceClient;
+import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
+import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc;
 import com.github.galleog.piggymetrics.notification.domain.NotificationType;
 import com.github.galleog.piggymetrics.notification.domain.Recipient;
+import com.github.galleog.piggymetrics.notification.repository.RecipientRepository;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.util.JsonFormat;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.devh.boot.grpc.client.inject.GrpcClient;
 import net.javacrumbs.shedlock.core.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import reactor.core.Exceptions;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Scheduler;
 
+import java.time.LocalDate;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Service to sent email notifications scheduled using cron-like expressions.
@@ -19,9 +27,16 @@ import java.util.concurrent.CompletableFuture;
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
-    private final AccountServiceClient client;
-    private final RecipientService recipientService;
+    @VisibleForTesting
+    static final String ACCOUNT_SERVICE = "account-service";
+
+    private final Scheduler jdbcScheduler;
+    private final RecipientRepository recipientRepository;
     private final EmailService emailService;
+
+    @VisibleForTesting
+    @GrpcClient(ACCOUNT_SERVICE)
+    ReactorAccountServiceGrpc.ReactorAccountServiceStub accountServiceStub;
 
     /**
      * Sends backup notifications to recipients that should be notified according to their notification settings.
@@ -31,40 +46,46 @@ public class NotificationService {
     @Scheduled(cron = "${backup.cron}")
     @SchedulerLock(name = "backupNotifications")
     public void sendBackupNotifications() {
-        List<Recipient> recipients = recipientService.readyToNotify(NotificationType.BACKUP);
-        logger.info("Found {} recipients for backup notification", recipients.size());
-
-        recipients.forEach(recipient ->
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        String attachment = client.getAccount(recipient.getAccountName());
-                        emailService.send(NotificationType.BACKUP, recipient, attachment);
-                        recipientService.markNotified(NotificationType.BACKUP, recipient);
-                    } catch (Exception e) {
-                        logger.error("Backup notification for " + recipient.getAccountName() + " failed", e);
-                    }
-                })
-        );
+        List<Recipient> recipients = recipientRepository.readyToNotify(NotificationType.BACKUP, LocalDate.now());
+        Flux.fromIterable(recipients)
+                .flatMap(recipient -> accountServiceStub.getAccount(
+                        AccountServiceProto.GetAccountRequest.newBuilder()
+                                .setName(recipient.getUsername())
+                                .build())
+                        .publishOn(jdbcScheduler)
+                        .doOnNext(account -> {
+                            try {
+                                emailService.send(NotificationType.BACKUP, recipient, JsonFormat.printer().print(account));
+                                recipient.markNotified(NotificationType.BACKUP);
+                                recipientRepository.update(recipient);
+                            } catch (Exception e) {
+                                throw Exceptions.propagate(e);
+                            }
+                        }).onErrorContinue((e, account) ->
+                                logger.error("Backup notification for user '" + recipient.getUsername() + "' failed", e)
+                        )
+                ).count()
+                .subscribe(count -> logger.info("Backup notification sent to {} recipients", count));
     }
 
     /**
-     * Sends remind notifications to recipients that should be notified according to their notification settings.
+     * Sends reminder notifications to recipients that should be notified according to their notification settings.
      */
     @Scheduled(cron = "${remind.cron}")
     @SchedulerLock(name = "remindNotifications")
     public void sendRemindNotifications() {
-        List<Recipient> recipients = recipientService.readyToNotify(NotificationType.REMIND);
-        logger.info("Found {} recipients for remind notification", recipients.size());
-
-        recipients.forEach(recipient ->
-                CompletableFuture.runAsync(() -> {
+        List<Recipient> recipients = recipientRepository.readyToNotify(NotificationType.REMIND, LocalDate.now());
+        Flux.fromIterable(recipients)
+                .publishOn(jdbcScheduler)
+                .doOnNext(recipient -> {
                     try {
                         emailService.send(NotificationType.REMIND, recipient, null);
-                        recipientService.markNotified(NotificationType.REMIND, recipient);
+                        recipient.markNotified(NotificationType.REMIND);
+                        recipientRepository.update(recipient);
                     } catch (Exception e) {
-                        logger.error("Remind notification for " + recipient.getAccountName() + " failed", e);
+                        logger.error("Reminder notification for user '" + recipient.getUsername() + "' failed", e);
                     }
-                })
-        );
+                }).count()
+                .subscribe(count -> logger.info("Reminder notification sent to {} recipients", count));
     }
 }

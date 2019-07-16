@@ -6,6 +6,7 @@ description = 'gateway'
 
 dependencies {
     compile(
+            project(':piggymetrics-core'),
             project(':grpc-common'),
             'org.springframework.boot:spring-boot-starter-webflux',
             'org.springframework.boot:spring-boot-starter-security',
@@ -82,7 +83,7 @@ jib {
         image = 'openjdk:8-jre-alpine'
     }
     to {
-        image = "piggymetrics/gateway"
+        image = "galleog/piggymetrics:gateway"
     }
     container {
         jvmFlags = [

@@ -1,11 +1,3 @@
-hystrix:
-  command:
-    default:
-      execution:
-        isolation:
-          thread:
-            timeoutInMilliseconds: 20000
-
 spring:
   datasource:
     driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
@@ -13,21 +5,9 @@ spring:
     username: test
     password: test
 
-  jpa:
-    open-in-view: false
-    database-platform: org.hibernate.dialect.PostgreSQL95Dialect
-    hibernate:
-      ddl-auto: none
-    properties:
-      hibernate:
-        show_sql: false
-        format_sql: true
-        use_sql_comments: true
+  liquibase:
+    default-schema:
 
-  jackson:
-    default-property-inclusion: non_null
-
-rates:
-  url: http://data.fixer.io/api/latest
-  key: f4ae01da81810abbc171722a9430972f
-  currencies: USD,EUR,RUB
+grpc:
+  server:
+    port: -1

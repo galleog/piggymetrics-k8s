@@ -13,7 +13,6 @@ jar {
 
 dependencies {
     implementation(
-            'org.springframework.boot:spring-boot-starter-data-jpa',
             'org.springframework.boot:spring-boot-starter-json',
             'org.apache.commons:commons-lang3',
             'com.google.guava:guava'
@@ -23,13 +22,9 @@ dependencies {
             'org.projectlombok:lombok'
     )
 
-    testImplementation("org.springframework.boot:spring-boot-starter-test") {
-        exclude group: 'junit', module: 'junit'
-    }
     testImplementation(
-            'com.h2database:h2',
-            'com.ninja-squad:DbSetup',
-            'org.assertj:assertj-db',
+            'org.springframework.boot:spring-boot-starter-test',
+            'org.assertj:assertj-core',
             'org.junit.jupiter:junit-jupiter-api'
     )
 

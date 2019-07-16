@@ -2,8 +2,7 @@ package com.github.galleog.piggymetrics.notification.repository;
 
 import com.github.galleog.piggymetrics.notification.domain.NotificationType;
 import com.github.galleog.piggymetrics.notification.domain.Recipient;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.lang.NonNull;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -12,15 +11,30 @@ import java.util.Optional;
 /**
  * Repository for {@link Recipient}.
  */
-public interface RecipientRepository extends CrudRepository<Recipient, String> {
+public interface RecipientRepository {
     /**
-     * Finds a recipient by their name.
+     * Gets a recipient by their username.
      *
-     * @param name the recipient's account name
-     * @return the recipient with the specified account name, or {@link Optional#empty()}
-     * if there is no recipient with that name
+     * @param username the recipient username
+     * @return the recipient with the specified username, or {@link Optional#empty()}
+     * if there is no recipient with that username
      */
-    Optional<Recipient> findByAccountName(String name);
+    Optional<Recipient> getByUsername(@NonNull String username);
+
+    /**
+     * Saves a recipient.
+     *
+     * @param recipient the recipient to save
+     */
+    void save(@NonNull Recipient recipient);
+
+    /**
+     * Updates a recipient.
+     *
+     * @param recipient the recipient to update
+     * @return the updated recipient, or {@link Optional#empty()} if there is no recipient with the specified name
+     */
+    Optional<Recipient> update(@NonNull Recipient recipient);
 
     /**
      * Finds recipients that should be notified by the specified date.
@@ -29,8 +43,5 @@ public interface RecipientRepository extends CrudRepository<Recipient, String> {
      * @param date the date where recipients should be notified
      * @return the found recipients
      */
-    @Query("select r from Recipient r join r.scheduledNotifications sn where key(sn) = ?1 and " +
-            "value(sn).active = true and (value(sn).lastNotifiedDate is null or " +
-            "(value(sn).lastNotifiedDate + value(sn).frequency) < ?2)")
-    List<Recipient> readyToNotify(NotificationType type, LocalDate date);
+    List<Recipient> readyToNotify(@NonNull NotificationType type, @NonNull LocalDate date);
 }

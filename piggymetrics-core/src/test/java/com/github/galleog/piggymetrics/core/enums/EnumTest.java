@@ -47,7 +47,7 @@ class EnumTest {
     }
 
     /**
-     * Test for {@link Enum#hashCode}.
+     * Test for {@link Enum#hashCode()}.
      */
     @Test
     void shouldHaveSameHashCode() {

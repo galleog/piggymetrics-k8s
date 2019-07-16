@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 import com.github.galleog.piggymetrics.notification.domain.NotificationType;
 import com.github.galleog.piggymetrics.notification.domain.Recipient;
 import lombok.Cleanup;
-import name.falgout.jeffrey.testing.junit.mockito.MockitoExtension;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.simplejavamail.converter.internal.mimemessage.MimeMessageParser;
 import org.simplejavamail.converter.internal.mimemessage.MimeMessageParser.ParsedMimeMessageComponents;
 import org.springframework.core.env.Environment;
@@ -36,7 +36,7 @@ import java.util.Properties;
  */
 @ExtendWith(MockitoExtension.class)
 class EmailServiceTest {
-    private static final String ACCOUNT_NAME = "test";
+    private static final String USERNAME = "test";
     private static final String EMAIL = "test@example.com";
     private static final String SUBJECT = "subject";
     private static final String TEXT = "text";
@@ -53,12 +53,9 @@ class EmailServiceTest {
     @BeforeEach
     void setUp() {
         recipient = Recipient.builder()
-                .accountName(ACCOUNT_NAME)
+                .username(USERNAME)
                 .email(EMAIL)
                 .build();
-
-        when(mailSender.createMimeMessage())
-                .thenReturn(new MimeMessage(Session.getDefaultInstance(new Properties())));
     }
 
     /**
@@ -66,6 +63,9 @@ class EmailServiceTest {
      */
     @Test
     void shouldSendEmailWithAttachment() throws Exception {
+        when(mailSender.createMimeMessage())
+                .thenReturn(new MimeMessage(Session.getDefaultInstance(new Properties())));
+
         EmailService emailService = new EmailService(mailSender, mockEnvironment());
         emailService.send(NotificationType.BACKUP, recipient, ATTACHMENT);
         verify(mailSender).send(messageCaptor.capture());
@@ -88,6 +88,9 @@ class EmailServiceTest {
      */
     @Test
     void shouldSendEmailWithoutAttachmentIfNoAttachmentPassed() throws Exception {
+        when(mailSender.createMimeMessage())
+                .thenReturn(new MimeMessage(Session.getDefaultInstance(new Properties())));
+
         EmailService emailService = new EmailService(mailSender, mockEnvironment());
         emailService.send(NotificationType.BACKUP, recipient, null);
         verify(mailSender).send(messageCaptor.capture());

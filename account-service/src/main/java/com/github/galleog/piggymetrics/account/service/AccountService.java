@@ -12,21 +12,20 @@ import com.github.galleog.piggymetrics.account.domain.TimePeriod;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
 import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Converter;
 import io.grpc.Status;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
-import org.javamoney.moneta.Money;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.transaction.annotation.Transactional;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.cloud.stream.messaging.Source;
+import org.springframework.lang.NonNull;
+import org.springframework.messaging.support.MessageBuilder;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
-import java.math.BigDecimal;
+import javax.money.MonetaryException;
+import java.time.DateTimeException;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
@@ -37,98 +36,48 @@ import java.util.stream.Collectors;
 @GrpcService
 @RequiredArgsConstructor
 public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImplBase {
-    @VisibleForTesting
-    public static final CurrencyUnit BASE_CURRENCY = Monetary.getCurrency("USD");
-
+    private static final Converter<Account, AccountServiceProto.Account> ACCOUNT_CONVERTER = new AccountConverter();
     private static final Converter<Item, AccountServiceProto.Item> ITEM_CONVERTER = new ItemConverter();
     private static final Converter<Saving, AccountServiceProto.Saving> SAVING_CONVERTER = new SavingConverter();
 
-    @Qualifier("jdbcScheduler")
     private final Scheduler jdbcScheduler;
+    private final Source source;
     private final AccountRepository repository;
 
     @Override
     public Mono<AccountServiceProto.Account> getAccount(Mono<AccountServiceProto.GetAccountRequest> request) {
         return request.flatMap(req ->
-                async(() -> repository.findByName(req.getName()))
-                        .switchIfEmpty(Mono.error(
-                                Status.NOT_FOUND
-                                        .withDescription("Account for user " + req.getName() + " not found")
-                                        .asRuntimeException()
-                        )).doOnNext(a -> logger.debug("Account <{}> found", a))
-        ).map(this::toAccountProto);
-    }
-
-    @Override
-    public Mono<AccountServiceProto.Account> createAccount(Mono<AccountServiceProto.CreateAccountRequest> request) {
-        return request.flatMap(req ->
-                async(() -> createNewAccount(req.getName()))
-        ).map(this::toAccountProto);
+                async(() ->
+                        repository.getByName(req.getName())
+                                .orElseThrow(() -> Status.NOT_FOUND
+                                        .withDescription("Account for user '" + req.getName() + "' not found")
+                                        .asRuntimeException())
+                ).doOnNext(account -> logger.debug("Account for user '{}' found", account))
+        ).map(ACCOUNT_CONVERTER::convert);
     }
 
     @Override
     public Mono<AccountServiceProto.Account> updateAccount(Mono<AccountServiceProto.Account> request) {
-        return request.flatMap(account ->
-                async(() -> updateAccountInternal(account))
-        ).map(this::toAccountProto);
+        return request.flatMap(account -> async(() -> doUpdateAccount(account)))
+                .map(ACCOUNT_CONVERTER::convert);
     }
 
-    @Transactional
-    private Account createNewAccount(String name) {
-        if (repository.findByName(name) != null) {
-            throw Status.ALREADY_EXISTS
-                    .withDescription("Account " + name + " already exists")
-                    .asRuntimeException();
-        }
+    private Account doUpdateAccount(AccountServiceProto.Account account) {
+        Account updated = repository.update(ACCOUNT_CONVERTER.reverse().convert(account))
+                .orElseThrow(() -> Status.NOT_FOUND
+                        .withDescription("Account for user '" + account.getName() + "' not found")
+                        .asRuntimeException());
 
-        Saving saving = Saving.builder()
-                .moneyAmount(Money.of(BigDecimal.ZERO, BASE_CURRENCY))
-                .interest(BigDecimal.ZERO)
-                .deposit(false)
-                .capitalization(false)
+        // send an AccountUpdated event
+        AccountServiceProto.AccountUpdatedEvent event = AccountServiceProto.AccountUpdatedEvent.newBuilder()
+                .setAccountName(account.getName())
+                .addAllItems(account.getItemsList())
+                .setSaving(account.getSaving())
                 .build();
-        Account account = Account.builder()
-                .name(name)
-                .saving(saving)
-                .build();
-        repository.save(account);
-        logger.info("Account for user {} created", name);
+        source.output().send(MessageBuilder.withPayload(event).build());
 
-        return account;
-    }
-
-    @Transactional
-    private Account updateAccountInternal(AccountServiceProto.Account account) {
-//        String name = account.getName();
-//        Account updated = repository.findByName(name)
-//                .orElseThrow(() -> Status.NOT_FOUND
-//                        .withDescription("Account for user '" + name + "' not found")
-//                        .asRuntimeException());
-//        try {
-//            updated.update(
-//                    account.getItemsList().stream()
-//                            .map(item -> ITEM_CONVERTER.reverse().convert(item))
-//                            .collect(Collectors.toList()),
-//                    SAVING_CONVERTER.reverse().convert(account.getSaving()),
-//                    account.getNote()
-//            );
-//        } catch (NullPointerException | IllegalArgumentException e) {
-//            throw Status.INVALID_ARGUMENT
-//                    .withDescription(e.getMessage())
-//                    .withCause(e)
-//                    .asRuntimeException();
-//        }
-//
-//        repository.save(updated);
-//        logger.info("Account {} updated", name);
-
-//            statisticsClient.updateStatistics(name, AccountDto.builder()
-//                    .incomes(account.getIncomes())
-//                    .expenses(account.getExpenses())
-//                    .saving(account.getSaving())
-//                    .build());
-
-        return null;
+        logger.info("Account for user '{}' updated", account.getName());
+        return updated;
     }
 
     private <T> Mono<T> async(Callable<? extends T> supplier) {
@@ -136,34 +85,63 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
                 .subscribeOn(jdbcScheduler);
     }
 
-    private AccountServiceProto.Account toAccountProto(Account account) {
-        AccountServiceProto.Account.Builder builder = AccountServiceProto.Account.newBuilder()
-                .setName(account.getName())
-                .addAllItems(account.getItems().stream()
-                        .map(ITEM_CONVERTER::convert)
-                        .collect(Collectors.toList()))
-                .setSaving(SAVING_CONVERTER.convert(account.getSaving()))
-                .setUpdateTime(timestampConverter().convert(account.getUpdateTime()));
-        if (account.getNote() != null) {
-            builder.setNote(account.getNote());
+    private static final class AccountConverter extends Converter<Account, AccountServiceProto.Account> {
+        @Override
+        protected AccountServiceProto.Account doForward(@NonNull Account account) {
+            AccountServiceProto.Account.Builder builder = AccountServiceProto.Account.newBuilder()
+                    .setName(account.getName())
+                    .addAllItems(account.getItems().stream()
+                            .map(ITEM_CONVERTER::convert)
+                            .collect(Collectors.toList()))
+                    .setSaving(SAVING_CONVERTER.convert(account.getSaving()));
+            if (account.getUpdateTime() != null) {
+                builder.setUpdateTime(timestampConverter().convert(account.getUpdateTime()));
+            }
+            if (account.getNote() != null) {
+                builder.setNote(account.getNote());
+            }
+            return builder.build();
         }
-        return builder.build();
+
+        @Override
+        protected Account doBackward(@NonNull AccountServiceProto.Account account) {
+            try {
+                Account.AccountBuilder builder = Account.builder()
+                        .name(account.getName())
+                        .saving(SAVING_CONVERTER.reverse().convert(account.getSaving()))
+                        .items(account.getItemsList().stream()
+                                .map(item -> ITEM_CONVERTER.reverse().convert(item))
+                                .collect(Collectors.toList()));
+                if (account.hasUpdateTime()) {
+                    builder.updateTime(timestampConverter().reverse().convert(account.getUpdateTime()));
+                }
+                if (StringUtils.isNotEmpty(account.getNote())) {
+                    builder.note(account.getNote());
+                }
+                return builder.build();
+            } catch (NullPointerException | IllegalArgumentException | DateTimeException | ArithmeticException | MonetaryException e) {
+                throw Status.INVALID_ARGUMENT
+                        .withDescription(e.getMessage())
+                        .withCause(e)
+                        .asRuntimeException();
+            }
+        }
     }
 
     private static final class ItemConverter extends Converter<Item, AccountServiceProto.Item> {
         @Override
-        protected AccountServiceProto.Item doForward(Item item) {
+        protected AccountServiceProto.Item doForward(@NonNull Item item) {
             return AccountServiceProto.Item.newBuilder()
                     .setTitle(item.getTitle())
                     .setMoney(moneyConverter().convert(item.getMoneyAmount()))
-                    .setPeriod(AccountServiceProto.Item.TimePeriod.valueOf(item.getPeriod().name()))
+                    .setPeriod(AccountServiceProto.TimePeriod.valueOf(item.getPeriod().name()))
                     .setIcon(item.getIcon())
-                    .setType(AccountServiceProto.Item.ItemType.valueOf(item.getType().name()))
+                    .setType(AccountServiceProto.ItemType.valueOf(item.getType().name()))
                     .build();
         }
 
         @Override
-        protected Item doBackward(AccountServiceProto.Item item) {
+        protected Item doBackward(@NonNull AccountServiceProto.Item item) {
             return Item.builder()
                     .title(item.getTitle())
                     .moneyAmount(moneyConverter().reverse().convert(item.getMoney()))

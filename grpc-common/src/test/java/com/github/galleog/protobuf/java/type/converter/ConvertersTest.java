@@ -2,6 +2,7 @@ package com.github.galleog.protobuf.java.type.converter;
 
 import static com.github.galleog.protobuf.java.type.converter.Converters.bigDecimalConverter;
 import static com.github.galleog.protobuf.java.type.converter.Converters.bigIntegerConverter;
+import static com.github.galleog.protobuf.java.type.converter.Converters.dateConverter;
 import static com.github.galleog.protobuf.java.type.converter.Converters.moneyConverter;
 import static com.github.galleog.protobuf.java.type.converter.Converters.timestampConverter;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -10,11 +11,13 @@ import com.github.galleog.protobuf.java.type.BigDecimalProto;
 import com.github.galleog.protobuf.java.type.BigIntegerProto;
 import com.github.galleog.protobuf.java.type.MoneyProto;
 import com.google.protobuf.Timestamp;
+import com.google.type.Date;
 import org.javamoney.moneta.Money;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -26,9 +29,19 @@ class ConvertersTest {
      */
     @Test
     void shouldConvertTimestamp() {
-        LocalDateTime dateTime = LocalDateTime.now().minusDays(5);
-        Timestamp timestamp = timestampConverter().convert(dateTime);
-        assertThat(timestampConverter().reverse().convert(timestamp)).isEqualTo(dateTime);
+        LocalDateTime localDateTime = LocalDateTime.now().minusDays(5);
+        Timestamp timestamp = timestampConverter().convert(localDateTime);
+        assertThat(timestampConverter().reverse().convert(timestamp)).isEqualTo(localDateTime);
+    }
+
+    /**
+     * Test for {@link Converters#dateConverter()}.
+     */
+    @Test
+    void shouldConvertDate() {
+        LocalDate localDate = LocalDate.now().minusDays(7);
+        Date date = dateConverter().convert(localDate);
+        assertThat(dateConverter().reverse().convert(date)).isEqualTo(localDate);
     }
 
     /**
@@ -46,7 +59,7 @@ class ConvertersTest {
      */
     @Test
     void shouldConvertBigDecimal() {
-        BigDecimal bigDecimal = new BigDecimal("234.05600");
+        BigDecimal bigDecimal = BigDecimal.valueOf(2340560000L, 2);
         BigDecimalProto.BigDecimal converted = bigDecimalConverter().convert(bigDecimal);
         assertThat(bigDecimalConverter().reverse().convert(converted)).isEqualTo(bigDecimal);
     }

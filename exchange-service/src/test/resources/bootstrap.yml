@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: exchange-service
+
+  cloud:
+    kubernetes:
+      enabled: false

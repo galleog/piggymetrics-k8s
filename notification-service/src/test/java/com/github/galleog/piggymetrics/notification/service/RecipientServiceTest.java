@@ -1,29 +1,34 @@
 package com.github.galleog.piggymetrics.notification.service;
 
+import static com.github.galleog.piggymetrics.notification.domain.NotificationType.BACKUP;
+import static com.github.galleog.piggymetrics.notification.domain.NotificationType.REMIND;
+import static com.github.galleog.protobuf.java.type.converter.Converters.dateConverter;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.github.galleog.piggymetrics.notification.domain.Frequency;
 import com.github.galleog.piggymetrics.notification.domain.NotificationSettings;
-import com.github.galleog.piggymetrics.notification.domain.NotificationType;
 import com.github.galleog.piggymetrics.notification.domain.Recipient;
+import com.github.galleog.piggymetrics.notification.grpc.RecipientServiceProto;
 import com.github.galleog.piggymetrics.notification.repository.RecipientRepository;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import name.falgout.jeffrey.testing.junit.mockito.MockitoExtension;
-import org.apache.commons.lang3.StringUtils;
+import com.google.type.Date;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.Answer;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+import reactor.test.StepVerifier;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -32,182 +37,176 @@ import java.util.Optional;
  */
 @ExtendWith(MockitoExtension.class)
 class RecipientServiceTest {
-    private static final String ACCOUNT_NAME = "test";
+    private static final String USERNAME = "test";
     private static final String EMAIL = "test@example.com";
     private static final String ANOTHER_EMAIL = "another@example.com";
+    private static final RecipientServiceProto.GetRecipientRequest GET_RECIPINET_REQUEST =
+            RecipientServiceProto.GetRecipientRequest.newBuilder()
+                    .setUserName(USERNAME)
+                    .build();
 
     @Mock
     private RecipientRepository repository;
-    @InjectMocks
     private RecipientService recipientService;
 
+    @BeforeEach
+    void setUp() {
+        recipientService = new RecipientService(Schedulers.immediate(), repository);
+    }
+
     /**
-     * Test for {@link RecipientService#findByAccountName(String)}.
+     * Test for {@link RecipientService#getRecipient(Mono)}.
      */
     @Test
-    void shouldFindRecipientByAccountName() {
+    void shouldGetRecipient() {
         Recipient recipient = stubRecipient();
-        when(repository.findByAccountName(recipient.getAccountName())).thenReturn(Optional.of(recipient));
-        Optional<Recipient> found = recipientService.findByAccountName(recipient.getAccountName());
-        assertThat(found).containsSame(recipient);
+        when(repository.getByUsername(USERNAME)).thenReturn(Optional.of(recipient));
+
+        Mono<RecipientServiceProto.Recipient> recipientMono = recipientService.getRecipient(Mono.just(GET_RECIPINET_REQUEST));
+        StepVerifier.create(recipientMono)
+                .expectNextMatches(r -> {
+                    assertThat(r.getUserName()).isEqualTo(USERNAME);
+                    assertThat(r.getEmail()).isEqualTo(EMAIL);
+                    assertThat(r.getNotificationsMap()).containsOnlyKeys(BACKUP.name());
+                    assertThat(r.getNotificationsMap().get(BACKUP.name())).extracting(
+                            RecipientServiceProto.NotificationSettings::getActive,
+                            RecipientServiceProto.NotificationSettings::getFrequency,
+                            RecipientServiceProto.NotificationSettings::getNotifyDate
+                    ).containsExactly(true, Frequency.QUARTERLY.getKey(), Date.getDefaultInstance());
+                    return true;
+                }).verifyComplete();
     }
 
     /**
-     * Test for {@link RecipientService#findByAccountName(String)} when the account name is empty.
+     * Test for {@link RecipientService#getRecipient(Mono)} when no notifications are found.
      */
     @Test
-    void shouldFailToFindRecipientWhenAccountNameIsEmpty() {
-        assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> recipientService.findByAccountName(StringUtils.EMPTY));
+    void shouldFailToGetRecipientWhenNoNotificationsFound() {
+        when(repository.getByUsername(USERNAME)).thenReturn(Optional.empty());
+
+        Mono<RecipientServiceProto.Recipient> recipientMono = recipientService.getRecipient(Mono.just(GET_RECIPINET_REQUEST));
+        StepVerifier.create(recipientMono)
+                .expectErrorMatches(t -> {
+                    assertThat(t).isInstanceOf(StatusRuntimeException.class);
+                    assertThat(Status.fromThrowable(t).getCode()).isEqualTo(Status.Code.NOT_FOUND);
+                    return true;
+                }).verify();
     }
 
     /**
-     * Test for {@link RecipientService#readyToNotify(NotificationType)}.
-     */
-    @Test
-    void shouldFindReadyToNotify() {
-        List<Recipient> recipients = ImmutableList.of(stubRecipient());
-        when(repository.readyToNotify(eq(NotificationType.BACKUP), any(LocalDate.class))).thenReturn(recipients);
-
-        List<Recipient> found = recipientService.readyToNotify(NotificationType.BACKUP);
-        assertThat(found).containsAll(recipients);
-    }
-
-    /**
-     * Test for {@link RecipientService#save(String, String, Map)} for an existing recipient.
+     * Test for {@link RecipientService#updateRecipient(Mono)} for an existing recipient.
      */
     @Test
     void shouldUpdateExistingRecipient() {
-        LocalDate date = LocalDate.now().minusDays(3);
-        NotificationSettings backup = NotificationSettings.builder()
-                .active(false)
-                .frequency(Frequency.MONTHLY)
-                .lastNotifiedDate(date)
-                .build();
-        NotificationSettings remind = NotificationSettings.builder()
-                .active(true)
-                .frequency(Frequency.WEEKLY)
-                .build();
-        Recipient recipient = stubRecipient();
-        when(repository.findByAccountName(ACCOUNT_NAME)).thenReturn(Optional.of(recipient));
-        when(repository.save(recipient)).thenReturn(recipient);
+        when(repository.update(any(Recipient.class)))
+                .thenAnswer((Answer<Optional>) invocation -> Optional.of(invocation.getArgument(0)));
 
-        Recipient saved = recipientService.save(ACCOUNT_NAME, ANOTHER_EMAIL, ImmutableMap.of(
-                NotificationType.BACKUP, backup,
-                NotificationType.REMIND, remind
-        ));
+        LocalDate localDate = LocalDate.now().minusDays(3);
+        Date date = dateConverter().convert(localDate);
+        RecipientServiceProto.NotificationSettings backup = RecipientServiceProto.NotificationSettings.newBuilder()
+                .setActive(false)
+                .setFrequency(Frequency.MONTHLY.getKey())
+                .setNotifyDate(date)
+                .build();
+        RecipientServiceProto.NotificationSettings remind = RecipientServiceProto.NotificationSettings.newBuilder()
+                .setActive(true)
+                .setFrequency(Frequency.WEEKLY.getKey())
+                .build();
+        RecipientServiceProto.Recipient recipient = RecipientServiceProto.Recipient.newBuilder()
+                .setUserName(USERNAME)
+                .setEmail(ANOTHER_EMAIL)
+                .putNotifications(BACKUP.name(), backup)
+                .putNotifications(REMIND.name(), remind)
+                .build();
+        Mono<RecipientServiceProto.Recipient> recipientMono = recipientService.updateRecipient(Mono.just(recipient));
+        StepVerifier.create(recipientMono)
+                .expectNextMatches(r -> {
+                    assertThat(r.getUserName()).isEqualTo(USERNAME);
+                    assertThat(r.getEmail()).isEqualTo(ANOTHER_EMAIL);
+                    assertThat(r.getNotificationsMap().entrySet()).extracting(
+                            Map.Entry::getKey,
+                            entry -> entry.getValue().getActive(),
+                            entry -> entry.getValue().getFrequency(),
+                            entry -> entry.getValue().getNotifyDate()
+                    ).containsOnly(
+                            tuple(BACKUP.name(), false, Frequency.MONTHLY.getKey(), date),
+                            tuple(REMIND.name(), true, Frequency.WEEKLY.getKey(), Date.getDefaultInstance())
+                    );
+                    return true;
+                }).verifyComplete();
 
-        assertThat(saved.getAccountName()).isEqualTo(ACCOUNT_NAME);
-        assertThat(saved.getEmail()).isEqualTo(ANOTHER_EMAIL);
-        assertThat(saved.getScheduledNotifications().get(NotificationType.BACKUP)).extracting(
-                NotificationSettings::isActive,
-                NotificationSettings::getFrequency,
-                NotificationSettings::getLastNotifiedDate
-        ).containsExactly(false, Frequency.MONTHLY, date);
-        assertThat(saved.getScheduledNotifications().get(NotificationType.REMIND)).extracting(
-                NotificationSettings::isActive,
-                NotificationSettings::getFrequency,
-                NotificationSettings::getLastNotifiedDate
-        ).containsExactly(true, Frequency.WEEKLY, null);
+        verify(repository).update(argThat(r -> {
+            assertThat(r.getUsername()).isEqualTo(USERNAME);
+            assertThat(r.getEmail()).isEqualTo(ANOTHER_EMAIL);
+            assertThat(r.getNotifications().entrySet()).extracting(
+                    Map.Entry::getKey,
+                    entry -> entry.getValue().isActive(),
+                    entry -> entry.getValue().getFrequency(),
+                    entry -> entry.getValue().getNotifyDate()
+            ).containsOnly(
+                    tuple(BACKUP, false, Frequency.MONTHLY, localDate),
+                    tuple(REMIND, true, Frequency.WEEKLY, null)
+            );
+            return true;
+        }));
     }
 
     /**
-     * Test for {@link RecipientService#save(String, String, Map)} for a new recipient.
+     * Test for {@link RecipientService#updateRecipient(Mono)} for a new recipient.
      */
     @Test
     void shouldSaveNewRecipient() {
-        LocalDate date = LocalDate.now().minusDays(1);
-        NotificationSettings backup = NotificationSettings.builder()
-                .active(true)
-                .frequency(Frequency.QUARTERLY)
-                .build();
-        NotificationSettings remind = NotificationSettings.builder()
-                .active(true)
-                .frequency(Frequency.WEEKLY)
-                .lastNotifiedDate(date)
-                .build();
-        when(repository.findByAccountName(ACCOUNT_NAME)).thenReturn(Optional.empty());
-        when(repository.save(any(Recipient.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(repository.update(any(Recipient.class))).thenReturn(Optional.empty());
 
-        Recipient saved = recipientService.save(ACCOUNT_NAME, EMAIL, ImmutableMap.of(
-                NotificationType.BACKUP, backup,
-                NotificationType.REMIND, remind
-        ));
-
-        assertThat(saved.getAccountName()).isEqualTo(ACCOUNT_NAME);
-        assertThat(saved.getEmail()).isEqualTo(EMAIL);
-        assertThat(saved.getScheduledNotifications().get(NotificationType.BACKUP)).extracting(
-                NotificationSettings::isActive,
-                NotificationSettings::getFrequency,
-                NotificationSettings::getLastNotifiedDate
-        ).containsExactly(true, Frequency.QUARTERLY, null);
-        assertThat(saved.getScheduledNotifications().get(NotificationType.REMIND)).extracting(
-                NotificationSettings::isActive,
-                NotificationSettings::getFrequency,
-                NotificationSettings::getLastNotifiedDate
-        ).containsExactly(true, Frequency.WEEKLY, date);
-    }
-
-    /**
-     * Test for {@link RecipientService#markNotified(NotificationType, Recipient)}.
-     */
-    @Test
-    void shouldMarkNotified() {
-        NotificationSettings backup = NotificationSettings.builder()
-                .active(false)
-                .frequency(Frequency.MONTHLY)
+        LocalDate localDate = LocalDate.now().minusDays(1);
+        Date date = dateConverter().convert(localDate);
+        RecipientServiceProto.NotificationSettings backup = RecipientServiceProto.NotificationSettings.newBuilder()
+                .setActive(true)
+                .setFrequency(Frequency.QUARTERLY.getKey())
                 .build();
-        NotificationSettings remind = NotificationSettings.builder()
-                .active(true)
-                .frequency(Frequency.WEEKLY)
+        RecipientServiceProto.NotificationSettings remind = RecipientServiceProto.NotificationSettings.newBuilder()
+                .setActive(true)
+                .setFrequency(Frequency.WEEKLY.getKey())
+                .setNotifyDate(date)
                 .build();
-        assertThat(backup.isNotified()).isFalse();
-        assertThat(remind.isNotified()).isFalse();
-
-        Recipient recipient = Recipient.builder()
-                .accountName(ACCOUNT_NAME)
-                .email(EMAIL)
-                .scheduledNotification(NotificationType.BACKUP, backup)
-                .scheduledNotification(NotificationType.REMIND, remind)
+        RecipientServiceProto.Recipient recipient = RecipientServiceProto.Recipient.newBuilder()
+                .setUserName(USERNAME)
+                .setEmail(EMAIL)
+                .putNotifications(BACKUP.name(), backup)
+                .putNotifications(REMIND.name(), remind)
                 .build();
 
-        recipientService.markNotified(NotificationType.REMIND, recipient);
+        Mono<RecipientServiceProto.Recipient> recipientMono = recipientService.updateRecipient(Mono.just(recipient));
+        StepVerifier.create(recipientMono)
+                .expectNextMatches(r -> {
+                    assertThat(r.getUserName()).isEqualTo(USERNAME);
+                    assertThat(r.getEmail()).isEqualTo(EMAIL);
+                    assertThat(r.getNotificationsMap().entrySet()).extracting(
+                            Map.Entry::getKey,
+                            entry -> entry.getValue().getActive(),
+                            entry -> entry.getValue().getFrequency(),
+                            entry -> entry.getValue().getNotifyDate()
+                    ).containsOnly(
+                            tuple(BACKUP.name(), true, Frequency.QUARTERLY.getKey(), Date.getDefaultInstance()),
+                            tuple(REMIND.name(), true, Frequency.WEEKLY.getKey(), date)
+                    );
+                    return true;
+                }).verifyComplete();
 
-        assertThat(recipient.getScheduledNotifications().get(NotificationType.BACKUP).isNotified()).isFalse();
-        assertThat(recipient.getScheduledNotifications().get(NotificationType.REMIND).isNotified()).isTrue();
-
-        verify(repository).save(recipient);
-    }
-
-    /**
-     * Test for {@link RecipientService#markNotified(NotificationType, Recipient)} if the notification being marked isn't active.
-     */
-    @Test
-    void shouldFailToMarkNotifiedIfNotificationInactive() {
-        NotificationSettings backup = NotificationSettings.builder()
-                .active(false)
-                .frequency(Frequency.MONTHLY)
-                .build();
-        Recipient recipient = Recipient.builder()
-                .accountName(ACCOUNT_NAME)
-                .email(EMAIL)
-                .scheduledNotification(NotificationType.BACKUP, backup)
-                .build();
-
-        assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> recipientService.markNotified(NotificationType.BACKUP, recipient));
-        verify(repository, never()).save(any(Recipient.class));
-    }
-
-    /**
-     * Test for {@link RecipientService#markNotified(NotificationType, Recipient)}
-     * if there is no notification of the requested type.
-     */
-    @Test
-    void shouldNotMarkNotifiedIfBackupNotificationIsNotSet() {
-        Recipient recipient = stubRecipient();
-        recipientService.markNotified(NotificationType.REMIND, recipient);
-        assertThat(recipient.getScheduledNotifications().get(NotificationType.REMIND)).isNull();
+        verify(repository).save(argThat(r -> {
+            assertThat(r.getUsername()).isEqualTo(USERNAME);
+            assertThat(r.getEmail()).isEqualTo(EMAIL);
+            assertThat(r.getNotifications().entrySet()).extracting(
+                    Map.Entry::getKey,
+                    entry -> entry.getValue().isActive(),
+                    entry -> entry.getValue().getFrequency(),
+                    entry -> entry.getValue().getNotifyDate()
+            ).containsOnly(
+                    tuple(BACKUP, true, Frequency.QUARTERLY, null),
+                    tuple(REMIND, true, Frequency.WEEKLY, localDate)
+            );
+            return true;
+        }));
     }
 
     private Recipient stubRecipient() {
@@ -216,9 +215,9 @@ class RecipientServiceTest {
                 .frequency(Frequency.QUARTERLY)
                 .build();
         return Recipient.builder()
-                .accountName(ACCOUNT_NAME)
+                .username(USERNAME)
                 .email(EMAIL)
-                .scheduledNotification(NotificationType.BACKUP, backup)
+                .notification(BACKUP, backup)
                 .build();
     }
 }

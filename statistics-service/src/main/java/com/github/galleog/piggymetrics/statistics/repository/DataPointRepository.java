@@ -1,29 +1,49 @@
 package com.github.galleog.piggymetrics.statistics.repository;
 
 import com.github.galleog.piggymetrics.statistics.domain.DataPoint;
-import com.github.galleog.piggymetrics.statistics.domain.DataPointId;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.lang.NonNull;
 
-import java.util.List;
+import java.time.LocalDate;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * Repository for {@link DataPoint}.
  */
-public interface DataPointRepository extends CrudRepository<DataPoint, DataPointId> {
+public interface DataPointRepository {
     /**
-     * Find a data point by its identifier.
+     * Gets a data point by an account name and date.
      *
-     * @param id the data point identifier
-     * @return the found data point, or {@link Optional#empty()} if there is no data point with the given identifier
+     * @param accountName the account name
+     * @param date        the data point date
+     * @return the found data point, or {@link Optional#empty()}
+     * if there is no data point with the specified account name and date
      */
-    Optional<DataPoint> findById(DataPointId id);
+    Optional<DataPoint> getByAccountNameAndDate(@NonNull String accountName, @NonNull LocalDate date);
 
     /**
      * Finds all data points associated with the specified account.
      *
-     * @param account the account name
-     * @return a list of the found data points
+     * @param accountName the account name
+     * @return the stream of found data points. Clients should ensure the stream is properly closed
      */
-    List<DataPoint> findByIdAccount(String account);
+    Stream<DataPoint> listByAccountName(String accountName);
+
+    /**
+     * Saves a data point.
+     *
+     * @param dataPoint the data point to save
+     * @return the saved data point
+     */
+    @NonNull
+    DataPoint save(@NonNull DataPoint dataPoint);
+
+    /**
+     * Updates a data point.
+     *
+     * @param dataPoint the data point to update
+     * @return the updated data point, or {@link Optional#empty()}
+     * if there is no data point with the specified account name and date
+     */
+    Optional<DataPoint> update(@NonNull DataPoint dataPoint);
 }

@@ -3,108 +3,58 @@ package com.github.galleog.piggymetrics.statistics.domain;
 import static com.github.galleog.piggymetrics.statistics.domain.ItemType.EXPENSE;
 import static com.github.galleog.piggymetrics.statistics.domain.ItemType.INCOME;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.github.galleog.piggymetrics.statistics.service.ConversionService;
-import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import lombok.AccessLevel;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Singular;
 import org.apache.commons.lang3.Validate;
-import org.hibernate.annotations.Columns;
-import org.javamoney.moneta.Money;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Configurable;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
 
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
-import javax.persistence.AttributeOverride;
-import javax.persistence.CascadeType;
-import javax.persistence.CollectionTable;
-import javax.persistence.Column;
-import javax.persistence.ElementCollection;
-import javax.persistence.EmbeddedId;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.FetchType;
-import javax.persistence.JoinColumn;
-import javax.persistence.MapKeyColumn;
-import javax.persistence.MapKeyEnumerated;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
-import javax.persistence.Version;
-import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 
 /**
  * Entity for daily time series data points containing the current account state.
  */
-@Entity
-@Table(name = DataPoint.TABLE_NAME)
-@EqualsAndHashCode(of = "id")
-@NoArgsConstructor(access = AccessLevel.PACKAGE)
-@Configurable(preConstruction = true, dependencyCheck = true)
-public class DataPoint implements Serializable {
-    @VisibleForTesting
-    public static final String TABLE_NAME = "data_points";
-    @VisibleForTesting
-    public static final String STATISTICS_TABLE_NAME = "statistic_metrics";
+@Getter
+public class DataPoint {
+    /**
+     * Account name this data point is associated with.
+     */
+    @NonNull
+    private String accountName;
 
     /**
-     * Base currency.
+     * Date of this data point.
      */
-    public static final CurrencyUnit BASE_CURRENCY = Monetary.getCurrency("USD");
-
-    @Autowired
-    private transient ConversionService conversionService;
-
-    @EmbeddedId
-    @Getter(AccessLevel.PRIVATE)
-    @AttributeOverride(name = "date", column = @Column(name = "data_point_date"))
-    private DataPointId id;
+    @NonNull
+    private LocalDate date;
 
     /**
      * Account incomes and expenses.
      */
-    @Getter(AccessLevel.PRIVATE)
-    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "dataPoint")
-    private Set<ItemMetric> metrics = new HashSet<>();
+    @NonNull
+    private List<ItemMetric> metrics;
 
     /**
      * Total statistics of incomes, expenses, and savings.
      */
-    @ElementCollection(fetch = FetchType.EAGER)
-    @MapKeyEnumerated(EnumType.ORDINAL)
-    @MapKeyColumn(name = "statistic_metric")
-    @CollectionTable(name = STATISTICS_TABLE_NAME, joinColumns = {
-            @JoinColumn(name = "account"), @JoinColumn(name = "data_point_date")
-    })
-    @Columns(columns = {@Column(name = "currency_code"), @Column(name = "amount")})
-    private Map<StatisticMetric, Money> statistics = new HashMap<>();
-
-    @Version
-    @SuppressWarnings("unused")
-    private Integer version;
+    @NonNull
+    private Map<StatisticalMetric, BigDecimal> statistics;
 
     @Builder
-    @SuppressWarnings("unused")
-    private DataPoint(@NonNull String account, @Nullable LocalDate date, @NonNull @Singular Collection<ItemMetric> metrics,
-                      @NonNull Money saving) {
-        setId(DataPointId.of(account, Optional.ofNullable(date).orElse(LocalDate.now())));
+    private DataPoint(@NonNull String accountName, @NonNull LocalDate date, @NonNull @Singular Collection<ItemMetric> metrics,
+                      @NonNull @Singular Map<StatisticalMetric, BigDecimal> statistics) {
+        setAccountName(accountName);
+        setDate(date);
         setMetrics(metrics);
-        setStatistics(saving);
+        setStatistics(statistics);
     }
 
     /**
@@ -114,79 +64,57 @@ public class DataPoint implements Serializable {
      * @param saving  the new saving
      * @throws NullPointerException if the metrics themselves, any metric they contain or the saving are {@code null}
      */
-    public void update(@NonNull Collection<ItemMetric> metrics, @NonNull Money saving) {
+    public void updateStatistics(@NonNull Collection<ItemMetric> metrics, @NonNull BigDecimal saving) {
+        Validate.notNull(saving);
+        Validate.isTrue(saving.signum() != -1);
+
         setMetrics(metrics);
-        setStatistics(saving);
+        setStatistics(
+                ImmutableMap.of(
+                        StatisticalMetric.INCOMES_AMOUNT,
+                        metrics.stream()
+                                .filter(metric -> INCOME.equals(metric.getType()))
+                                .map(ItemMetric::getMoneyAmount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add),
+                        StatisticalMetric.EXPENSES_AMOUNT,
+                        metrics.stream()
+                                .filter(metric -> EXPENSE.equals(metric.getType()))
+                                .map(ItemMetric::getMoneyAmount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add),
+                        StatisticalMetric.SAVING_AMOUNT,
+                        saving
+                )
+        );
     }
 
-    /**
-     * Gets the account this data point is associated with.
-     */
-    @NonNull
-    public String getAccount() {
-        return getId().getAccount();
+    @Override
+    public String toString() {
+        return new ToStringBuilder(this)
+                .append("accountName", getAccountName())
+                .append("date", DateTimeFormatter.ISO_DATE.format(getDate()))
+                .build();
     }
 
-    /**
-     * Gets the data of this data point.
-     */
-    @NonNull
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    public LocalDate getDate() {
-        return getId().getDate();
+    private void setAccountName(String accountName) {
+        Validate.notBlank(accountName);
+        this.accountName = accountName;
     }
 
-    /**
-     * Gets the incomes of this data point.
-     */
-    @NonNull
-    public Set<ItemMetric> getIncomes() {
-        return getMetrics().stream().filter(metric -> INCOME.equals(metric.getType()))
-                .collect(ImmutableSet.toImmutableSet());
-    }
-
-    /**
-     * Gets the expenses of this data point.
-     */
-    @NonNull
-    public Set<ItemMetric> getExpenses() {
-        return getMetrics().stream().filter(metric -> EXPENSE.equals(metric.getType()))
-                .collect(ImmutableSet.toImmutableSet());
-    }
-
-    private void setId(DataPointId id) {
-        this.id = id;
+    private void setDate(LocalDate date) {
+        Validate.notNull(date);
+        this.date = date;
     }
 
     private void setMetrics(Collection<ItemMetric> metrics) {
-        Validate.notNull(metrics);
-        this.metrics.clear();
-        metrics.forEach(this::addMetric);
+        Validate.noNullElements(metrics);
+        this.metrics = ImmutableList.copyOf(metrics);
     }
 
-    /**
-     * Gets the total statistics of incomes, expenses and savings.
-     */
-    @NonNull
-    public Map<StatisticMetric, Money> getStatistics() {
-        return ImmutableMap.copyOf(this.statistics);
-    }
-
-    private void setStatistics(Money saving) {
-        Validate.notNull(saving);
-
-        this.statistics.put(StatisticMetric.INCOMES_AMOUNT, getIncomes().stream()
-                .map(ItemMetric::getMoneyAmount)
-                .reduce(Money.of(0, BASE_CURRENCY), Money::add));
-        this.statistics.put(StatisticMetric.EXPENSES_AMOUNT, getExpenses().stream()
-                .map(ItemMetric::getMoneyAmount)
-                .reduce(Money.of(0, BASE_CURRENCY), Money::add));
-        this.statistics.put(StatisticMetric.SAVING_AMOUNT, conversionService.convert(saving, BASE_CURRENCY));
-    }
-
-    private void addMetric(ItemMetric metric) {
-        Validate.notNull(metric);
-        metric.setDataPoint(this);
-        getMetrics().add(metric);
+    private void setStatistics(Map<StatisticalMetric, BigDecimal> statistics) {
+        Validate.notNull(statistics);
+        Validate.isTrue(statistics.values()
+                .stream()
+                .allMatch(amount -> amount.signum() >= 0));
+        this.statistics = ImmutableMap.copyOf(statistics);
     }
 }

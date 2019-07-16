@@ -1,0 +1,77 @@
+apply plugin: 'org.springframework.boot'
+apply plugin: 'com.google.protobuf'
+apply plugin: 'com.google.cloud.tools.jib'
+
+description = 'exchange-service'
+
+dependencies {
+    compile(
+            project(':grpc-common'),
+            'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
+            'io.grpc:grpc-netty',
+            'io.grpc:grpc-protobuf',
+            'io.grpc:grpc-stub',
+            'io.grpc:grpc-services',
+            'com.salesforce.servicelibs:reactor-grpc-stub',
+            'net.devh:grpc-server-spring-boot-starter',
+            'org.javamoney:moneta'
+    )
+
+    testCompile(
+            'io.projectreactor:reactor-test',
+            'org.assertj:assertj-core',
+            'org.junit.jupiter:junit-jupiter-api'
+    )
+
+    testRuntimeOnly(
+            'org.junit.jupiter:junit-jupiter-engine'
+    )
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${ver.protobuf}"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:${ver.grpc}"
+        }
+        reactor {
+            artifact = "com.salesforce.servicelibs:reactor-grpc:${ver.reactiveGrpc}:jdk8@jar"
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {
+                option 'enable_deprecated=false'
+            }
+            reactor {}
+        }
+    }
+}
+
+idea {
+    module {
+        sourceDirs += file("$buildDir/generated/source/proto/main/java")
+        sourceDirs += file("$buildDir/generated/source/proto/main/grpc")
+        sourceDirs += file("$buildDir/generated/source/proto/main/reactor")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/java")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/grpc")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/reactor")
+    }
+}
+
+jib {
+    from {
+        image = 'galleog/grpc-health-probe:latest'
+    }
+    to {
+        image = "galleog/piggymetrics:exchange-service"
+    }
+    container {
+        jvmFlags = [
+                '-XX:+PrintFlagsFinal',
+                '-XX:MaxRAMPercentage=50.0'
+        ]
+    }
+}

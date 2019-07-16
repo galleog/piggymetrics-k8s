@@ -6,6 +6,7 @@ import com.github.galleog.protobuf.java.type.MoneyProto;
 import com.google.common.base.Converter;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Timestamp;
+import com.google.type.Date;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.javamoney.moneta.Money;
@@ -13,6 +14,7 @@ import org.javamoney.moneta.Money;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
@@ -24,6 +26,7 @@ import java.time.ZoneId;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Converters {
     private static final Converter<LocalDateTime, Timestamp> TIMESTAMP_CONVERTER = new TimestampConverter();
+    private static final Converter<LocalDate, Date> DATE_CONVERTER = new DateConverter();
     private static final Converter<BigInteger, BigIntegerProto.BigInteger> BIG_INTEGER_CONVERTER = new BigIntegerConverter();
     private static final Converter<BigDecimal, BigDecimalProto.BigDecimal> BIG_DECIMAL_CONVERTER = new BigDecimalConverter();
     private static final Converter<Money, MoneyProto.Money> MONEY_CONVERTER = new MoneyConverter();
@@ -33,6 +36,13 @@ public final class Converters {
      */
     public static Converter<LocalDateTime, Timestamp> timestampConverter() {
         return TIMESTAMP_CONVERTER;
+    }
+
+    /**
+     * Returns {@link Converter} to convert {@link LocalDate} to {@link Date}.
+     */
+    public static Converter<LocalDate, Date> dateConverter() {
+        return DATE_CONVERTER;
     }
 
     /**
@@ -70,6 +80,22 @@ public final class Converters {
         protected LocalDateTime doBackward(Timestamp timestamp) {
             Instant instant = Instant.ofEpochSecond(timestamp.getSeconds(), timestamp.getNanos());
             return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
+        }
+    }
+
+    private static final class DateConverter extends Converter<LocalDate, Date> {
+        @Override
+        protected Date doForward(LocalDate localDate) {
+            return Date.newBuilder()
+                    .setYear(localDate.getYear())
+                    .setMonth(localDate.getMonthValue())
+                    .setDay(localDate.getDayOfMonth())
+                    .build();
+        }
+
+        @Override
+        protected LocalDate doBackward(Date date) {
+            return LocalDate.of(date.getYear(), date.getMonth(), date.getDay());
         }
     }
 

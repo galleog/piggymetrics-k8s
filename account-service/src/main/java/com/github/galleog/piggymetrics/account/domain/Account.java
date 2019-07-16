@@ -47,25 +47,7 @@ public class Account {
         setItems(items);
         setSaving(saving);
         setNote(note);
-        setUpdateTime(updateTime == null ? LocalDateTime.now() : updateTime);
-    }
-
-    /**
-     * Updates this account.
-     *
-     * @param items  the incomes and expenses this account should have
-     * @param saving the saving this account should have
-     * @param note   the optional note
-     * @throws NullPointerException if the items themselves, any item they contain or the saving are {@code null}
-     */
-    public void update(@NonNull Collection<Item> items, @NonNull Saving saving, @Nullable String note) {
-        Validate.noNullElements(items);
-        Validate.notNull(saving);
-
-        setItems(items);
-        setSaving(saving);
-        setNote(note);
-        setUpdateTime(LocalDateTime.now());
+        setUpdateTime(updateTime);
     }
 
     private void setName(String name) {
@@ -89,12 +71,13 @@ public class Account {
     }
 
     private void setUpdateTime(LocalDateTime updateTime) {
-        Validate.notNull(updateTime);
         this.updateTime = updateTime;
     }
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append(name).build();
+        return new ToStringBuilder(this)
+                .append(getName())
+                .build();
     }
 }

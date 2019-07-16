@@ -17,7 +17,7 @@ public class SecurityConfig {
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http.authorizeExchange()
-                .pathMatchers("/", "/accounts", "/accounts/demo").permitAll()
+                .pathMatchers("/", "/users", "/accounts/demo").permitAll()
                 .anyExchange().permitAll();
 //                .and()
 //                .oauth2ResourceServer();

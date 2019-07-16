@@ -5,13 +5,12 @@ spring:
     username: test
     password: test
 
-  jpa:
-    properties:
-      hibernate:
-        default_schema:
-
   liquibase:
     default-schema:
+
+grpc:
+  server:
+    port: -1
 
 
 

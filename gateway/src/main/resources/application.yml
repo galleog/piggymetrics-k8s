@@ -1,6 +1,3 @@
-server:
-  port: 8080
-
 spring:
   jmx:
     enabled: false
@@ -19,5 +16,17 @@ spring:
 grpc:
   client:
     account-service:
-      address: "dns:///${ACCOUNT_SERVICE_HOST:localhost}:${ACCOUNT_SERVER_PORT:9090}"
+      address: "dns:///${ACCOUNT_SERVICE_HOST:localhost}:${ACCOUNT_SERVICE_PORT:9090}"
+      negotiationType: PLAINTEXT
+
+    auth-service:
+      address: "dns:///${AUTH_SERVICE_HOST:localhost}:${AUTH_SERVICE_PORT:9090}"
+      negotiationType: PLAINTEXT
+
+    notification-service:
+      address: "dns:///${NOTIFICATION_SERVICE_HOST:localhost}:${NOTIFICATION_SERVICE_PORT:9090}"
+      negotiationType: PLAINTEXT
+
+    statistics-service:
+      address: "dns:///${STATISTICS_SERVICE_HOST:localhost}:${STATISTICS_SERVICE_PORT:9090}"
       negotiationType: PLAINTEXT

@@ -4,30 +4,29 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "protobuf/java/type/BigDecimal.proto";
 import "protobuf/java/type/Money.proto";
-import "UserService.proto";
 
 package piggymetrics.account;
 
 option java_package = "com.github.galleog.piggymetrics.account.grpc";
 option java_outer_classname = "AccountServiceProto";
 
+// Enumeration for item types.
+enum ItemType {
+    INCOME = 0;
+    EXPENSE = 1;
+}
+
+// Time period values.
+enum TimePeriod {
+    YEAR = 0;
+    QUARTER = 1;
+    MONTH = 2;
+    DAY = 3;
+    HOUR = 4;
+}
+
 // Income or expense item.
 message Item {
-    // Enumeration for item types
-    enum ItemType {
-        INCOME = 0;
-        EXPENSE = 1;
-    }
-
-    // Time period values
-    enum TimePeriod {
-        YEAR = 0;
-        QUARTER = 1;
-        MONTH = 2;
-        DAY = 3;
-        HOUR = 4;
-    }
-
     // Required. Type of the item.
     ItemType type = 1;
     // Required. Item title.
@@ -72,6 +71,16 @@ message Account {
     string note = 5;
 }
 
+// Event sent when an account is updated
+message AccountUpdatedEvent {
+    // Required. Name of the updated account
+    string account_name = 1;
+    // Account incomes and expenses.
+    repeated Item items = 2;
+    // Required. Account savings.
+    Saving saving = 3;
+}
+
 // Service to work with accounts.
 service AccountService {
     // Gets an account by its name.
@@ -79,9 +88,8 @@ service AccountService {
     //   NOT_FOUND - no account with the requested name is found
     rpc GetAccount (GetAccountRequest) returns (Account);
 
-    // Creates a new account with the name of the specified user and default parameters.
-    rpc CreateAccount (piggymetrics.auth.User) returns (Account);
-
     // Updates the specified account.
+    // Possible exception response statuses:
+    //   NOT_FOUND - no account with the requested name is found
     rpc UpdateAccount (Account) returns (Account);
 }

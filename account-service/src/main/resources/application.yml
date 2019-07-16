@@ -17,11 +17,16 @@ spring:
   liquibase:
     default-schema: account_service
 
+  cloud:
+    stream:
+      bindings:
+        input:
+          destination: ${USER_EVENT_TOPIC:user-events}
+          content-type: application/x-protobuf
+        output:
+          destination: ${ACCOUNT_EVENT_TOPIC:account-events}
+          content-type: application/x-protobuf
+
 grpc:
   server:
     port: 9090
-
-  client:
-    auth-service:
-      address: "static://${AUTH_SERVICE_HOST:localhost}:${AUTH_SERVER_PORT:9090}"
-      negotiationType: PLAINTEXT

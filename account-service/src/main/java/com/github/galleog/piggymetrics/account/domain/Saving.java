@@ -43,30 +43,6 @@ public class Saving {
         setCapitalization(capitalization);
     }
 
-//    /**
-//     * Sets the account for this saving.
-//     *
-//     * @throws NullPointerException is the account is {@code null}
-//     */
-//    void setAccount(@NonNull Account account) {
-//        Validate.notNull(account);
-//        this.account = account;
-//        this.id = account.getId();
-//    }
-
-//    /**
-//     * Updates this saving using the attributes of the passed one.
-//     *
-//     * @param update the new saving data
-//     * @throws NullPointerException if the new data are {@code null}
-//     */
-//    void update(@NonNull Saving update) {
-//        this.setMoneyAmount(update.getMoneyAmount());
-//        this.setInterest(update.getInterest());
-//        this.setDeposit(update.isDeposit());
-//        this.setCapitalization(update.isCapitalization());
-//    }
-
     private void setMoneyAmount(Money moneyAmount) {
         Validate.notNull(moneyAmount);
         Validate.isTrue(moneyAmount.isPositiveOrZero());

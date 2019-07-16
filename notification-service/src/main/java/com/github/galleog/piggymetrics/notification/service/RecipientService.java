@@ -1,108 +1,140 @@
 package com.github.galleog.piggymetrics.notification.service;
 
+import static com.github.galleog.protobuf.java.type.converter.Converters.dateConverter;
+
+import com.github.galleog.piggymetrics.notification.domain.Frequency;
 import com.github.galleog.piggymetrics.notification.domain.NotificationSettings;
 import com.github.galleog.piggymetrics.notification.domain.NotificationType;
 import com.github.galleog.piggymetrics.notification.domain.Recipient;
+import com.github.galleog.piggymetrics.notification.grpc.ReactorRecipientServiceGrpc;
+import com.github.galleog.piggymetrics.notification.grpc.RecipientServiceProto;
 import com.github.galleog.piggymetrics.notification.repository.RecipientRepository;
-import lombok.NonNull;
+import com.google.common.base.Converter;
+import com.google.common.collect.ImmutableMap;
+import io.grpc.Status;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.Validate;
-import org.apache.commons.validator.routines.EmailValidator;
-import org.springframework.stereotype.Service;
+import net.devh.boot.grpc.server.service.GrpcService;
+import org.springframework.lang.NonNull;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
+import java.time.DateTimeException;
 import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 /**
  * Service for {@link Recipient}.
  */
 @Slf4j
-@Service
+@GrpcService
 @RequiredArgsConstructor
-public class RecipientService {
-    private final RecipientRepository recipientRepository;
+public class RecipientService extends ReactorRecipientServiceGrpc.RecipientServiceImplBase {
+    private static final Converter<NotificationSettings, RecipientServiceProto.NotificationSettings>
+            NOTIFICATION_SETTINGS_CONVERTER = new NotificationSettingsConverter();
+    private static final Converter<Recipient, RecipientServiceProto.Recipient> RECIPIENT_CONVERTER = new RecipientConverter();
 
-    /**
-     * Finds a recipient by their name.
-     *
-     * @param name recipient's account name
-     * @return the recipient with the specified account name, or {@link Optional#empty()}
-     * if there is no recipient with that name
-     * @throws NullPointerException     if the account name is {@code null}
-     * @throws IllegalArgumentException if the account name is blank
-     */
-    public Optional<Recipient> findByAccountName(@NonNull String name) {
-        Validate.notBlank(name);
-        return recipientRepository.findByAccountName(name);
+    private final Scheduler jdbcScheduler;
+    private final RecipientRepository repository;
+
+    @Override
+    public Mono<RecipientServiceProto.Recipient> getRecipient(Mono<RecipientServiceProto.GetRecipientRequest> request) {
+        return request.flatMap(req ->
+                async(() ->
+                        repository.getByUsername(req.getUserName())
+                                .orElseThrow(() -> Status.NOT_FOUND
+                                        .withDescription("Notifications for user '" + req.getUserName() + "' not found")
+                                        .asRuntimeException())
+                ).doOnNext(recipient -> logger.debug("Notifications for user '{}' found", recipient))
+        ).map(RECIPIENT_CONVERTER::convert);
     }
 
-    /**
-     * Finds recipients that should be notified shortly.
-     *
-     * @param type the notification type
-     * @return the found recipients
-     * @throws NullPointerException if the type is {@code null}
-     */
-    @SuppressWarnings("WeakerAccess")
-    @NonNull
-    public List<Recipient> readyToNotify(@NonNull NotificationType type) {
-        Validate.notNull(type);
-        return recipientRepository.readyToNotify(type, LocalDate.now());
+    @Override
+    public Mono<RecipientServiceProto.Recipient> updateRecipient(Mono<RecipientServiceProto.Recipient> request) {
+        return request.map(recipient -> RECIPIENT_CONVERTER.reverse().convert(recipient))
+                .flatMap(recipient -> async(() -> doUpdateRecipient(recipient)))
+                .map(RECIPIENT_CONVERTER::convert);
     }
 
-    /**
-     * Creates or updates recipient settings
-     *
-     * @param accountName recipient's account name
-     * @param email       the new recipient email
-     * @param settings    the new notification settings
-     * @return the updated recipient
-     * @throws NullPointerException     if the account name or settings are {@code null}
-     * @throws IllegalArgumentException if the account name is blank or the email is invalid
-     */
-    @NonNull
     @Transactional
-    public Recipient save(@NonNull String accountName, @NonNull String email,
-                          @NonNull Map<NotificationType, NotificationSettings> settings) {
-        Validate.notBlank(accountName);
-        Validate.isTrue(EmailValidator.getInstance().isValid(email));
-        Validate.notNull(settings);
-
-        Recipient recipient;
-        Optional<Recipient> optional = recipientRepository.findByAccountName(accountName);
-        if (optional.isPresent()) {
-            logger.debug("Notification settings for the recipient {} will be updated", accountName);
-
-            recipient = optional.get();
-            recipient.updateSettings(email, settings);
+    private Recipient doUpdateRecipient(Recipient recipient) {
+        Optional<Recipient> updated = repository.update(recipient);
+        if (updated.isPresent()) {
+            logger.info("Notification settings for user '{}' updated", recipient.getUsername());
+            return updated.get();
         } else {
-            recipient = Recipient.builder()
-                    .accountName(accountName)
-                    .email(email)
-                    .scheduledNotifications(settings)
-                    .build();
+            repository.save(recipient);
+            logger.info("Notification settings for user '{}' created", recipient.getUsername());
+            return recipient;
         }
-        Recipient saved = recipientRepository.save(recipient);
-
-        logger.info("Notification settings of the recipient {} saved", saved);
-        return saved;
     }
 
-    /**
-     * Updates the last notified date of the specified recipient.
-     *
-     * @param type      the notification type
-     * @param recipient the recipient to be updated
-     * @throws NullPointerException     if the notification type or recipient is {@code null}
-     * @throws IllegalArgumentException if recipient's notification settings of the specified type aren't active
-     */
-    public void markNotified(@NonNull NotificationType type, @NonNull Recipient recipient) {
-        Validate.notNull(recipient);
-        recipient.markNotified(type);
-        recipientRepository.save(recipient);
+    private <T> Mono<T> async(Callable<? extends T> supplier) {
+        return Mono.<T>fromCallable(supplier)
+                .subscribeOn(jdbcScheduler);
+    }
+
+    private static final class RecipientConverter extends Converter<Recipient, RecipientServiceProto.Recipient> {
+        @Override
+        protected RecipientServiceProto.Recipient doForward(@NonNull Recipient recipient) {
+            return RecipientServiceProto.Recipient.newBuilder()
+                    .setUserName(recipient.getUsername())
+                    .setEmail(recipient.getEmail())
+                    .putAllNotifications(
+                            recipient.getNotifications().entrySet().stream()
+                                    .collect(Collectors.toMap(
+                                            entry -> entry.getKey().name(),
+                                            entry -> NOTIFICATION_SETTINGS_CONVERTER.convert(entry.getValue())
+                                    ))
+                    ).build();
+        }
+
+        @Override
+        protected Recipient doBackward(@NonNull RecipientServiceProto.Recipient recipient) {
+            try {
+                return Recipient.builder()
+                        .username(recipient.getUserName())
+                        .email(recipient.getEmail())
+                        .notifications(
+                                recipient.getNotificationsMap().entrySet().stream()
+                                        .collect(ImmutableMap.toImmutableMap(
+                                                entry -> NotificationType.valueOf(entry.getKey()),
+                                                entry -> NOTIFICATION_SETTINGS_CONVERTER.reverse().convert(entry.getValue())
+                                        ))
+                        ).build();
+            } catch (NullPointerException | IllegalArgumentException | DateTimeException e) {
+                throw Status.INVALID_ARGUMENT
+                        .withDescription(e.getMessage())
+                        .withCause(e)
+                        .asRuntimeException();
+            }
+        }
+    }
+
+    private static final class NotificationSettingsConverter
+            extends Converter<NotificationSettings, RecipientServiceProto.NotificationSettings> {
+        @Override
+        protected RecipientServiceProto.NotificationSettings doForward(@NonNull NotificationSettings notificationSettings) {
+            RecipientServiceProto.NotificationSettings.Builder builder = RecipientServiceProto.NotificationSettings.newBuilder()
+                    .setActive(notificationSettings.isActive())
+                    .setFrequency(notificationSettings.getFrequency().getKey());
+            if (notificationSettings.getNotifyDate() != null) {
+                builder.setNotifyDate(dateConverter().convert(notificationSettings.getNotifyDate()));
+            }
+            return builder.build();
+        }
+
+        @Override
+        protected NotificationSettings doBackward(@NonNull RecipientServiceProto.NotificationSettings notificationSettings) {
+            NotificationSettings.NotificationSettingsBuilder builder = NotificationSettings.builder()
+                    .active(notificationSettings.getActive())
+                    .frequency(Frequency.valueOf(notificationSettings.getFrequency()));
+            if (notificationSettings.hasNotifyDate()) {
+                builder.notifyDate(dateConverter().reverse().convert(notificationSettings.getNotifyDate()));
+            }
+            return builder.build();
+        }
     }
 }

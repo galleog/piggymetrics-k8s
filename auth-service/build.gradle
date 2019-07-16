@@ -1,5 +1,7 @@
 apply plugin: 'org.springframework.boot'
 apply plugin: 'com.google.protobuf'
+apply plugin: 'com.google.cloud.tools.jib'
+apply plugin: 'nu.studer.jooq'
 
 description = 'auth-service'
 
@@ -13,8 +15,10 @@ configurations {
 
 dependencies {
     compile(
+            project(":grpc-common"),
             'org.springframework.boot:spring-boot-starter-web',
-            'org.springframework.boot:spring-boot-starter-data-jpa',
+            'org.springframework.boot:spring-boot-starter-jooq',
+            'org.springframework.cloud:spring-cloud-starter-stream-kafka',
             'org.springframework.boot:spring-boot-starter-security',
             'org.springframework.security.oauth:spring-security-oauth2',
             'org.springframework.boot:spring-boot-starter-actuator',
@@ -24,6 +28,7 @@ dependencies {
             'io.grpc:grpc-stub',
             'com.salesforce.servicelibs:reactor-grpc-stub',
             'net.devh:grpc-server-spring-boot-starter',
+            'io.disc99:protocol-buffers-spring-cloud-stream-starter',
             'org.apache.commons:commons-lang3',
             'org.liquibase:liquibase-core',
             'com.google.guava:guava',
@@ -38,24 +43,35 @@ dependencies {
 
     testCompile(
             'org.springframework.boot:spring-boot-starter-test',
+            'org.springframework.cloud:spring-cloud-stream-test-support',
             'io.projectreactor:reactor-test',
+            'io.grpc:grpc-testing',
             'org.testcontainers:postgresql',
             'org.testcontainers:junit-jupiter',
             'com.ninja-squad:DbSetup',
             'org.assertj:assertj-db',
-            'name.falgout.jeffrey.testing.junit5:mockito-extension',
+            'org.mockito:mockito-junit-jupiter',
             'org.junit.jupiter:junit-jupiter-api'
     )
 
     testRuntimeOnly(
-            'org.junit.jupiter:junit-jupiter-engine'
+            'org.junit.jupiter:junit-jupiter-engine',
+            'org.junit.vintage:junit-vintage-engine'
     )
 
     ajc(
             "org.aspectj:aspectjtools"
     )
+    
     aspects(
             "org.springframework:spring-aspects"
+    )
+
+    jooqRuntime(
+            project(':liquibase-tc'),
+            'org.testcontainers:postgresql',
+            'org.postgresql:postgresql',
+            'org.slf4j:slf4j-nop'
     )
 }
 
@@ -98,5 +114,55 @@ idea {
         generatedSourceDirs += file("$buildDir/generated/source/proto/main/java")
         generatedSourceDirs += file("$buildDir/generated/source/proto/main/grpc")
         generatedSourceDirs += file("$buildDir/generated/source/proto/main/reactor")
+    }
+}
+
+jib {
+    from {
+        image = 'galleog/grpc-health-probe:latest'
+    }
+    to {
+        image = "galleog/piggymetrics:auth-service"
+    }
+    container {
+        jvmFlags = [
+                '-XX:+PrintFlagsFinal',
+                '-XX:MaxRAMPercentage=50.0'
+        ]
+    }
+}
+
+jooq {
+    domain(sourceSets.main) {
+        jdbc {
+            driver = database.driver
+            url = database.url
+            user = database.username
+            password = database.password
+        }
+
+        generator {
+            database {
+                name = 'org.jooq.meta.postgres.PostgresDatabase'
+                includes = '.*'
+                excludes = 'databasechangelog.*'
+                inputSchema = 'public'
+            }
+            generate {
+                deprecated = false
+                javaTimeTypes = true
+                indexes = false
+            }
+            target {
+                packageName = 'com.github.galleog.piggymetrics.auth.domain'
+                directory = "$buildDir/generated/source/jooq"
+            }
+        }
+    }
+}
+
+generateDomainJooqSchemaSource.with {
+    javaExecSpec = { JavaExecSpec s ->
+        s.systemProperties << [changeLogFile: "${project.projectDir}/src/main/resources/db/changelog/db.changelog-master.yaml"]
     }
 }

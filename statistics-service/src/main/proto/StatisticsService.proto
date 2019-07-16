@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+import "google/type/date.proto";
+import "protobuf/java/type/BigDecimal.proto";
+
+package piggymetrics.statistics;
+
+option java_package = "com.github.galleog.piggymetrics.statistics.grpc";
+option java_outer_classname = "StatisticsServiceProto";
+
+// Enumeration for item types.
+enum ItemType {
+    INCOME = 0;
+    EXPENSE = 1;
+}
+
+// Normalized income or expense with the base currency and time period.
+message ItemMetric {
+    // Required. Type of the item.
+    ItemType type = 1;
+    // Required. Item title.
+    string title = 2;
+    // Required. Monetary amount of this item.
+    protobuf.java.type.BigDecimal money_amount = 3;
+}
+
+// Daily time series data point containing the current account state.
+message DataPoint {
+    // Required. Account name this data point is associated with.
+    string account_name = 1;
+    // Required. Date of this data point.
+    google.type.Date date = 2;
+    // Account incomes and expenses.
+    repeated ItemMetric metrics = 3;
+    // Required. Total statistics of incomes, expenses, and savings.
+    map<string, protobuf.java.type.BigDecimal> statistics = 4;
+}
+
+// Request to list data points for an account.
+message ListDataPointsRequest {
+    // Required. Name of the account to list data points for
+    string account_name = 1;
+}
+
+// Service to get statistics for an account.
+service StatisticsService {
+    // Lists data points for an account.
+    // Possible exception response statuses:
+    //   NOT_FOUND - no data points for the requested account is found
+    rpc ListDataPoints (ListDataPointsRequest) returns (stream DataPoint);
+}

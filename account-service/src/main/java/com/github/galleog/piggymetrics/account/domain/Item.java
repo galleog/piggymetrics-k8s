@@ -51,7 +51,11 @@ public class Item {
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append(title).build();
+        return new ToStringBuilder(this)
+                .append("id", getId())
+                .append("type", getType())
+                .append("title", getTitle())
+                .build();
     }
 
     private void setId(Long id) {
@@ -62,16 +66,6 @@ public class Item {
         Validate.notNull(type);
         this.type = type;
     }
-
-//    /**
-//     * Sets the account for this item.
-//     *
-//     * @throws NullPointerException if the account is {@code null}
-//     */
-//    void setAccount(@NonNull Account account) {
-//        Validate.notNull(account);
-//        this.account = account;
-//    }
 
     private void setTitle(String title) {
         Validate.notBlank(title);

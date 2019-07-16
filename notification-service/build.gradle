@@ -1,27 +1,43 @@
 apply plugin: 'org.springframework.boot'
+apply plugin: 'com.google.protobuf'
+apply plugin: 'com.google.cloud.tools.jib'
+apply plugin: 'nu.studer.jooq'
 
 description = 'notification-service'
 
+configurations {
+    ajc
+    aspects
+    compile {
+        extendsFrom aspects
+    }
+}
+
 dependencies {
-    implementation(
+    compile(
             project(':piggymetrics-core'),
-            'org.springframework.boot:spring-boot-starter-web',
-            'org.springframework.boot:spring-boot-starter-data-jpa',
-            'org.springframework.boot:spring-boot-starter-security',
-            'org.springframework.cloud:spring-cloud-starter-oauth2',
-            'org.springframework.cloud:spring-cloud-starter-openfeign',
-            'org.springframework.boot:spring-boot-starter-actuator',
+            project(':grpc-common'),
+            'org.springframework.boot:spring-boot-starter-jooq',
             'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
             'org.springframework.boot:spring-boot-starter-mail',
+            'io.grpc:grpc-netty',
+            'io.grpc:grpc-protobuf',
+            'io.grpc:grpc-stub',
+            'io.grpc:grpc-services',
+            'com.salesforce.servicelibs:reactor-grpc-stub',
+            'net.devh:grpc-server-spring-boot-starter',
+            'net.devh:grpc-client-spring-boot-starter',
             'org.apache.commons:commons-lang3',
             'org.liquibase:liquibase-core',
             'com.google.guava:guava',
             'net.javacrumbs.shedlock:shedlock-spring',
             'net.javacrumbs.shedlock:shedlock-provider-jdbc-template',
+            'org.aspectj:aspectjrt',
+            'org.aspectj:aspectjweaver',
             'org.slf4j:jcl-over-slf4j',
             'org.postgresql:postgresql'
     )
-    implementation('commons-validator:commons-validator') {
+    compile('commons-validator:commons-validator') {
         exclude module: 'commons-logging'
     }
 
@@ -29,16 +45,15 @@ dependencies {
             'org.projectlombok:lombok'
     )
 
-    testImplementation('org.springframework.boot:spring-boot-starter-test') {
-        exclude group: 'junit', module: 'junit'
-    }
-    testImplementation(
-            'org.springframework.security:spring-security-test',
+    testCompile(
+            'org.springframework.boot:spring-boot-starter-test',
+            'io.projectreactor:reactor-test',
+            'io.grpc:grpc-testing',
             'org.testcontainers:postgresql',
             'org.testcontainers:junit-jupiter',
             'com.ninja-squad:DbSetup',
             'org.assertj:assertj-db',
-            'name.falgout.jeffrey.testing.junit5:mockito-extension',
+            'org.mockito:mockito-junit-jupiter',
             'org.junit.jupiter:junit-jupiter-api',
             'commons-io:commons-io',
             'org.simplejavamail:simple-java-mail'
@@ -51,4 +66,118 @@ dependencies {
     testRuntimeOnly(
             'org.junit.jupiter:junit-jupiter-engine'
     )
+
+    ajc(
+            "org.aspectj:aspectjtools"
+    )
+
+    aspects(
+            "org.springframework:spring-aspects"
+    )
+
+    jooqRuntime(
+            project(':liquibase-tc'),
+            'org.testcontainers:postgresql',
+            'org.postgresql:postgresql',
+            'org.slf4j:slf4j-nop'
+    )
+}
+
+compileJava {
+    doLast {
+        aspectj project.sourceSets.main.output.classesDir.absolutePath,
+                configurations.aspects.asPath,
+                project.sourceSets.main.output.classesDir.absolutePath,
+                configurations.compile.asPath
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${ver.protobuf}"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:${ver.grpc}"
+        }
+        reactor {
+            artifact = "com.salesforce.servicelibs:reactor-grpc:${ver.reactiveGrpc}:jdk8@jar"
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {
+                option 'enable_deprecated=false'
+            }
+            reactor {}
+        }
+    }
+}
+
+idea {
+    module {
+        sourceDirs += file("$buildDir/generated/source/proto/main/java")
+        sourceDirs += file("$buildDir/generated/source/proto/main/grpc")
+        sourceDirs += file("$buildDir/generated/source/proto/main/reactor")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/java")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/grpc")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/reactor")
+    }
+}
+
+jib {
+    from {
+        image = 'galleog/grpc-health-probe:latest'
+    }
+    to {
+        image = "galleog/piggymetrics:notification-service"
+    }
+    container {
+        jvmFlags = [
+                '-XX:+PrintFlagsFinal',
+                '-XX:MaxRAMPercentage=50.0'
+        ]
+    }
+}
+
+jooq {
+    domain(sourceSets.main) {
+        jdbc {
+            driver = database.driver
+            url = database.url
+            user = database.username
+            password = database.password
+        }
+
+        generator {
+            database {
+                name = 'org.jooq.meta.postgres.PostgresDatabase'
+                includes = '.*'
+                excludes = 'databasechangelog.* | shedlock.*'
+                inputSchema = 'public'
+                forcedTypes {
+                    forcedType {
+                        userType = 'com.github.galleog.piggymetrics.notification.domain.NotificationType'
+                        enumConverter = true
+                        expression = '.*\\.NOTIFICATION_TYPE'
+                    }
+                }
+            }
+            generate {
+                deprecated = false
+                javaTimeTypes = true
+                indexes = false
+            }
+            target {
+                packageName = 'com.github.galleog.piggymetrics.notification.domain'
+                directory = "$buildDir/generated/source/jooq"
+            }
+        }
+    }
+}
+
+generateDomainJooqSchemaSource.with {
+    javaExecSpec = { JavaExecSpec s ->
+        s.systemProperties << [changeLogFile: "${project.projectDir}/src/main/resources/db/changelog/db.changelog-master.yaml"]
+    }
 }

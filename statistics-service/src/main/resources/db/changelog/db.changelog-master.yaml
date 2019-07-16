@@ -1,144 +1,138 @@
 databaseChangeLog:
-- changeSet:
-    id: 1
-    author: galleog
-    changes:
-    - createTable:
-        tableName: data_points
-        columns:
-        - column:
-            name: account
-            type: varchar(20)
-            constraints:
-              nullable: false
-        - column:
-            name: data_point_date
-            type: date
-            constraints:
-              nullable: false
-        - column:
-            name: version
-            type: int
-            constraints:
-              nullable: false
+  - changeSet:
+      id: 1
+      author: galleog
+      changes:
+        - createTable:
+            tableName: data_points
+            columns:
+              - column:
+                  name: account_name
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: data_point_date
+                  type: date
+                  constraints:
+                    nullable: false
 
-- changeSet:
-    id: 2
-    author: galleog
-    changes:
-    - addPrimaryKey:
-        tableName: data_points
-        columnNames: account, data_point_date
-        constraintName: pk_data_points
+  - changeSet:
+      id: 2
+      author: galleog
+      changes:
+        - addPrimaryKey:
+            tableName: data_points
+            columnNames: account_name, data_point_date
+            constraintName: pk_data_points
 
-- changeSet:
-    id: 3
-    author: galleog
-    changes:
-    - createTable:
-        tableName: item_metrics
-        columns:
-        - column:
-            name: id
-            type: bigint
-            constraints:
-              primaryKey: true
-              primaryKeyName: pk_item_metrics
-              nullable: false
-        - column:
-            name: account
-            type: varchar(20)
-            constraints:
-              nullable: false
-        - column:
-            name: data_point_date
-            type: date
-            constraints:
-              nullable: false
-        - column:
-            name: title
-            type: varchar(20)
-            constraints:
-              nullable: false
-        - column:
-            name: currency_code
-            type: char(3)
-            constraints:
-              nullable: false
-        - column:
-            name: amount
-            type: numeric(20,2)
-            constraints:
-              nullable: false
-        - column:
-            name: item_type
-            type: int
-            constraints:
-              nullable: false
+  - changeSet:
+      id: 3
+      author: galleog
+      changes:
+        - createTable:
+            tableName: item_metrics
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_item_metrics
+                    nullable: false
+              - column:
+                  name: account_name
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: data_point_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: money_amount
+                  type: numeric(20,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: item_type
+                  type: varchar(7)
+                  constraints:
+                    nullable: false
 
-- changeSet:
-    id: 4
-    author: galleog
-    changes:
-    - addForeignKeyConstraint:
-        baseTableName: item_metrics
-        baseColumnNames: account, data_point_date
-        referencedTableName: data_points
-        referencedColumnNames: account, data_point_date
-        constraintName: fk_item_metrics_data_points
+  - changeSet:
+      id: 4
+      author: galleog
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: item_metrics
+            baseColumnNames: account_name, data_point_date
+            referencedTableName: data_points
+            referencedColumnNames: account_name, data_point_date
+            constraintName: fk_item_metrics_data_points
 
-- changeSet:
-    id: 5
-    author: galleog
-    changes:
-    - createSequence:
-        sequenceName: item_metric_seq
-        startValue: 1
-        incrementBy: 1
+  - changeSet:
+      id: 5
+      author: galleog
+      changes:
+        - createSequence:
+            sequenceName: item_metric_seq
+            startValue: 1
+            incrementBy: 1
 
-- changeSet:
-    id: 6
-    author: galleog
-    changes:
-    - createTable:
-        tableName: statistic_metrics
-        columns:
-        - column:
-            name: account
-            type: varchar(20)
-            constraints:
-              nullable: false
-        - column:
-            name: data_point_date
-            type: date
-            constraints:
-              nullable: false
-        - column:
-            name: statistic_metric
-            type: int
-            constraints:
-              nullable: false
-        - column:
-            name: currency_code
-            type: char(3)
-            constraints:
-              nullable: false
-        - column:
-            name: amount
-            type: numeric(20,2)
-            constraints:
-              nullable: false
+  - changeSet:
+      id: 6
+      author: galleog
+      changes:
+        - createTable:
+            tableName: statistical_metrics
+            columns:
+              - column:
+                  name: account_name
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: data_point_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: statistical_metric
+                  type: varchar(15)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: money_amount
+                  type: numeric(20,2)
+                  constraints:
+                    nullable: false
 
-- changeSet:
-    id: 7
-    author: galleog
-    changes:
-    - addForeignKeyConstraint:
-        baseTableName: statistic_metrics
-        baseColumnNames: account, data_point_date
-        referencedTableName: data_points
-        referencedColumnNames: account, data_point_date
-        constraintName: fk_statistic_metrics_data_points
+  - changeSet:
+      id: 7
+      author: galleog
+      changes:
+        - addPrimaryKey:
+            tableName: statistical_metrics
+            columnNames: account_name, data_point_date, statistical_metric
+            constraintName: pk_statistical_metrics
+
+  - changeSet:
+      id: 8
+      author: galleog
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: statistical_metrics
+            baseColumnNames: account_name, data_point_date
+            referencedTableName: data_points
+            referencedColumnNames: account_name, data_point_date
+            constraintName: fk_statistical_metrics_data_points
 
 
 

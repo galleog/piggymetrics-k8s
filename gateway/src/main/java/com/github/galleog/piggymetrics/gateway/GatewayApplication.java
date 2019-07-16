@@ -1,10 +1,9 @@
 package com.github.galleog.piggymetrics.gateway;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
-import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.zalando.jackson.datatype.money.MoneyModule;
 
 /**
@@ -17,9 +16,7 @@ public class GatewayApplication {
     }
 
     @Bean
-    public ObjectMapper objectMapper() {
-        return Jackson2ObjectMapperBuilder.json()
-                .modulesToInstall(new MoneyModule())
-                .build();
+    public Jackson2ObjectMapperBuilderCustomizer objectMapperBuilderCustomizer() {
+        return builder -> builder.modulesToInstall(new MoneyModule());
     }
 }

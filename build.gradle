@@ -1,41 +1,38 @@
-import org.testcontainers.containers.PostgreSQLContainer
-
 buildscript {
     dependencies {
-        classpath 'org.testcontainers:postgresql:1.10.6'
+        classpath 'org.testcontainers:postgresql:1.11.4'
     }
 }
 
 plugins {
-    id 'org.springframework.boot' version '2.1.3.RELEASE' apply false
-    id 'com.google.protobuf' version '0.8.8' apply false
-    id 'com.google.cloud.tools.jib' version '1.0.1' apply false
+    id 'org.springframework.boot' version '2.1.6.RELEASE' apply false
+    id 'com.google.protobuf' version '0.8.10' apply false
+    id 'com.google.cloud.tools.jib' version '1.3.0' apply false
     id 'nu.studer.jooq' version '3.0.3' apply false
 }
 
 ext {
     ver = [
-            springCloud         : 'Greenwich.RELEASE',
-            springSecurityOauth : '2.3.4.RELEASE',
-            dbsetup             : '2.1.0',
-            moneta              : '1.2.1',
-            jadira              : '6.0.1.GA',
-            jacksonDatatypeMoney: '1.0.1',
-            lombok              : '1.18.4',
-            guava               : '21.0',
-            assertjDb           : '1.2.0',
-            commonsValidator    : '1.6',
-            junitJupiter        : '5.2.0',
-            mockitoExtension    : '1.0.1',
-            commonsIo           : '2.6',
-            shedlock            : '1.0.0',
-            simpleJavaMail      : '5.0.3',
-            testcontainers      : '1.10.6',
-            postgresql          : '42.2.5',
-            grpc                : '1.18.0',
-            reactiveGrpc        : '0.9.0',
-            protobuf            : '3.6.1',
-            grpcSpringBoot      : '2.2.1.RELEASE'
+            springCloud              : 'Greenwich.SR2',
+            springSecurityOauth      : '2.3.4.RELEASE',
+            dbsetup                  : '2.1.0',
+            moneta                   : '1.3',
+            jacksonDatatypeMoney     : '1.0.1',
+            lombok                   : '1.18.8',
+            guava                    : '28.0-jre',
+            assertjDb                : '1.2.0',
+            commonsValidator         : '1.6',
+            junit                    : '5.5.0',
+            commonsIo                : '2.6',
+            shedlock                 : '2.5.0',
+            simpleJavaMail           : '5.0.3',
+            testcontainers           : '1.11.4',
+            postgresql               : '42.2.5',
+            grpc                     : '1.21.0',
+            reactiveGrpc             : '0.10.0',
+            protobuf                 : '3.8.0',
+            grpcSpringBoot           : '2.4.0.RELEASE',
+            protobufSpringCloudStream: '0.0.2'
     ]
 
     database = [
@@ -75,6 +72,7 @@ subprojects {
         imports {
             mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
             mavenBom "org.springframework.cloud:spring-cloud-dependencies:${ver.springCloud}"
+            mavenBom "org.junit:junit-bom:${ver.junit}"
         }
 
         dependencies {
@@ -89,16 +87,10 @@ subprojects {
             dependency "com.salesforce.servicelibs:reactor-grpc-stub:${ver.reactiveGrpc}"
             dependency "com.ninja-squad:DbSetup:${ver.dbsetup}"
             dependency "org.javamoney:moneta:${ver.moneta}"
-            dependency "org.jadira.usertype:usertype.core:${ver.jadira}"
             dependency "org.zalando:jackson-datatype-money:${ver.jacksonDatatypeMoney}"
             dependency "com.google.guava:guava:${ver.guava}"
             dependency "org.assertj:assertj-db:${ver.assertjDb}"
             dependency "commons-validator:commons-validator:${ver.commonsValidator}"
-            dependency "org.junit.jupiter:junit-jupiter-api:${ver.junitJupiter}"
-            dependency "org.junit.jupiter:junit-jupiter-engine:${ver.junitJupiter}"
-            dependency "org.junit.jupiter:junit-jupiter-params:${ver.junitJupiter}"
-            dependency "org.junit.vintage:junit-vintage-engine:${ver.junitJupiter}"
-            dependency "name.falgout.jeffrey.testing.junit5:mockito-extension:${ver.mockitoExtension}"
             dependency "commons-io:commons-io:${ver.commonsIo}"
             dependency "net.javacrumbs.shedlock:shedlock-spring:${ver.shedlock}"
             dependency "net.javacrumbs.shedlock:shedlock-provider-jdbc-template:${ver.shedlock}"
@@ -109,6 +101,7 @@ subprojects {
             dependency "org.postgresql:postgresql:${ver.postgresql}"
             dependency "net.devh:grpc-server-spring-boot-starter:${ver.grpcSpringBoot}"
             dependency "net.devh:grpc-client-spring-boot-starter:${ver.grpcSpringBoot}"
+            dependency "io.disc99:protocol-buffers-spring-cloud-stream-starter:${ver.protobufSpringCloudStream}"
         }
     }
 

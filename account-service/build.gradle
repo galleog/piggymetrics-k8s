@@ -25,7 +25,7 @@ dependencies {
             'io.grpc:grpc-services',
             'com.salesforce.servicelibs:reactor-grpc-stub',
             'net.devh:grpc-server-spring-boot-starter',
-            'net.devh:grpc-client-spring-boot-starter',
+            'io.disc99:protocol-buffers-spring-cloud-stream-starter',
             'org.apache.commons:commons-lang3',
             'org.javamoney:moneta',
             'org.liquibase:liquibase-core',
@@ -41,17 +41,20 @@ dependencies {
 
     testCompile(
             'org.springframework.boot:spring-boot-starter-test',
+            'org.springframework.cloud:spring-cloud-stream-test-support',
             'io.projectreactor:reactor-test',
+            'io.grpc:grpc-testing',
             'org.testcontainers:postgresql',
             'org.testcontainers:junit-jupiter',
             'com.ninja-squad:DbSetup',
             'org.assertj:assertj-db',
-            'name.falgout.jeffrey.testing.junit5:mockito-extension',
+            'org.mockito:mockito-junit-jupiter',
             'org.junit.jupiter:junit-jupiter-api'
     )
 
     testRuntimeOnly(
-            'org.junit.jupiter:junit-jupiter-engine'
+            'org.junit.jupiter:junit-jupiter-engine',
+            'org.junit.vintage:junit-vintage-engine'
     )
 
     ajc(

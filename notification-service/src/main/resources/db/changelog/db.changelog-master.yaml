@@ -1,118 +1,97 @@
 databaseChangeLog:
-- changeSet:
-    id: 1
-    author: galleog
-    changes:
-    - createTable:
-        tableName: recipients
-        columns:
-        - column:
-            name: id
-            type: int
-            constraints:
-              primaryKey: true
-              primaryKeyName: pk_recipients
-              nullable: false
-        - column:
-            name: account_name
-            type: varchar(20)
-            constraints:
-              nullable: false
-              unique: true
-              uniqueConstraintName: uc_recipients_account_name
-        - column:
-            name: email
-            type: varchar(255)
-            constraints:
-              nullable: false
-        - column:
-            name: version
-            type: int
-            constraints:
-              nullable: false
+  - changeSet:
+      id: 1
+      author: galleog
+      changes:
+        - createTable:
+            tableName: recipients
+            columns:
+              - column:
+                  name: username
+                  type: varchar(20)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_recipients
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
 
-- changeSet:
-    id: 2
-    author: galleog
-    changes:
-    - createSequence:
-        sequenceName: recipient_seq
-        startValue: 1
-        incrementBy: 1
+  - changeSet:
+      id: 2
+      author: galleog
+      changes:
+        - createTable:
+            tableName: recipient_notifications
+            columns:
+              - column:
+                  name: username
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: notification_type
+                  type: char(6)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: frequency
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: notify_date
+                  type: date
 
-- changeSet:
-    id: 3
-    author: galleog
-    changes:
-    - createTable:
-        tableName: recipient_notifications
-        columns:
-        - column:
-            name: notification_type
-            type: char(6)
-            constraints:
-              nullable: false
-        - column:
-            name: recipient_id
-            type: int
-            constraints:
-              nullable: false
-        - column:
-            name: active
-            type: boolean
-            constraints:
-              nullable: false
-        - column:
-            name: frequency
-            type: int
-            constraints:
-              nullable: false
-        - column:
-            name: last_notified_date
-            type: date
+  - changeSet:
+      id: 3
+      author: galleog
+      changes:
+        - addPrimaryKey:
+            tableName: recipient_notifications
+            columnNames: notification_type, username
+            constraintName: pk_recipient_notifications
 
-- changeSet:
-    id: 4
-    author: galleog
-    changes:
-    - addPrimaryKey:
-        tableName: recipient_notifications
-        columnNames: notification_type, recipient_id
-        constraintName: pk_recipient_notifications
+  - changeSet:
+      id: 4
+      author: galleog
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: recipient_notifications
+            baseColumnNames: username
+            referencedTableName: recipients
+            referencedColumnNames: username
+            constraintName: fk_recipient_notifications_username
 
-- changeSet:
-    id: 5
-    author: galleog
-    changes:
-    - addForeignKeyConstraint:
-        baseTableName: recipient_notifications
-        baseColumnNames: recipient_id
-        referencedTableName: recipients
-        referencedColumnNames: id
-        constraintName: fk_recipient_notifications_recipient_id
-
-- changeSet:
-    id: 6
-    author: galleog
-    changes:
-    - createTable:
-        tableName: shedlock
-        columns:
-        - column:
-            name: name
-            type: varchar(64)
-            constraints:
-              primaryKey: true
-              primaryKeyName: pk_shedlock
-              nullable: false
-        - column:
-            name: lock_until
-            type: datetime
-        - column:
-            name: locked_at
-            type: datetime
-        - column:
-            name: locked_by
-            type: varchar(255)
-            constraints:
-              nullable: false
+  - changeSet:
+      id: 5
+      author: galleog
+      changes:
+        - createTable:
+            tableName: shedlock
+            columns:
+              - column:
+                  name: name
+                  type: varchar(64)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_shedlock
+                    nullable: false
+              - column:
+                  name: lock_until
+                  type: datetime
+              - column:
+                  name: locked_at
+                  type: datetime
+              - column:
+                  name: locked_by
+                  type: varchar(255)
+                  constraints:
+                    nullable: false

@@ -51,7 +51,7 @@ public class EmailService {
                 "If an attachment is specified then its filename must not be blank");
 
         String subject = env.getRequiredProperty(type.getSubject());
-        String text = MessageFormat.format(env.getRequiredProperty(type.getText()), recipient.getAccountName());
+        String text = MessageFormat.format(env.getRequiredProperty(type.getText()), recipient.getUsername());
 
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true);
@@ -64,6 +64,6 @@ public class EmailService {
         }
 
         mailSender.send(message);
-        logger.info("Email notification of type {} has been send to {}", type, recipient.getEmail());
+        logger.info("Email notification of type {} sent to {}", type, recipient.getEmail());
     }
 }

@@ -1,0 +1,32 @@
+spring:
+  autoconfigure:
+    exclude: net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DATABASE_HOST:localhost}:${DATABASE_PORT:5432}/${DATABASE_NAME:piggymetrics}
+    username: ${DATABASE_USER:postgres}
+    password: ${DATABASE_PASSWORD:secret}
+
+    hikari:
+      maximum-pool-size: 3
+
+  jmx:
+    enabled: false
+
+  jooq:
+    sql-dialect: postgres_10
+
+  liquibase:
+    default-schema: auth_service
+
+  cloud:
+    stream:
+      bindings:
+        output:
+          destination: ${USER_EVENT_TOPIC:user-events}
+          content-type: application/x-protobuf
+
+grpc:
+  server:
+    port: 9090

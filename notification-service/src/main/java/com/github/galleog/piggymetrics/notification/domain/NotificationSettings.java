@@ -1,28 +1,22 @@
 package com.github.galleog.piggymetrics.notification.domain;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import lombok.Builder;
 import lombok.Getter;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 
-import javax.persistence.Embeddable;
-import javax.persistence.Transient;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Settings for notifications of a particular {@link NotificationType}.
  */
 @Getter
-@Embeddable
-@JsonDeserialize(builder = NotificationSettings.NotificationSettingsBuilder.class)
 public class NotificationSettings {
     /**
-     * Indicates if the notification is active.
+     * Indicates if the notification is active. Default is {@code true}.
      */
     @Builder.Default
     private boolean active = true;
@@ -35,18 +29,14 @@ public class NotificationSettings {
      * Date when the notification was last sent.
      */
     @Nullable
-    private LocalDate lastNotifiedDate;
-
-    @SuppressWarnings("unused")
-    NotificationSettings() {
-    }
+    private LocalDate notifyDate;
 
     @Builder
     @SuppressWarnings("unused")
-    private NotificationSettings(@NonNull boolean active, @NonNull Frequency frequency, @Nullable LocalDate lastNotifiedDate) {
+    private NotificationSettings(boolean active, @NonNull Frequency frequency, @Nullable LocalDate notifyDate) {
         setActive(active);
         setFrequency(frequency);
-        setLastNotifiedDate(lastNotifiedDate);
+        setNotifyDate(notifyDate);
     }
 
     /**
@@ -54,17 +44,24 @@ public class NotificationSettings {
      *
      * @return {@code true} if the recipient is notified; {@code false} otherwise
      */
-    @Transient
-    @JsonIgnore
     public boolean isNotified() {
-        return getLastNotifiedDate() != null;
+        return this.getNotifyDate() != null;
     }
 
     /**
      * Sets the last notified date to the current date.
      */
-    void setNotified() {
-        setLastNotifiedDate(LocalDate.now());
+    void markNotified() {
+        setNotifyDate(LocalDate.now());
+    }
+
+    @Override
+    public String toString() {
+        return new ToStringBuilder(this)
+                .append("active", isActive())
+                .append("frequency", getFrequency())
+                .append("notifyDate", getNotifyDate() == null ? null : DateTimeFormatter.ISO_DATE.format(getNotifyDate()))
+                .build();
     }
 
     private void setActive(boolean active) {
@@ -76,11 +73,7 @@ public class NotificationSettings {
         this.frequency = frequency;
     }
 
-    private void setLastNotifiedDate(LocalDate date) {
-        this.lastNotifiedDate = date;
-    }
-
-    @JsonPOJOBuilder(withPrefix = StringUtils.EMPTY)
-    public static final class NotificationSettingsBuilder {
+    private void setNotifyDate(LocalDate date) {
+        this.notifyDate = date;
     }
 }

@@ -1,3 +1,29 @@
-feign:
-  hystrix:
+spring:
+  jmx:
     enabled: false
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DATABASE_HOST:localhost}:${DATABASE_PORT:5432}/${DATABASE_NAME:piggymetrics}
+    username: ${DATABASE_USER:postgres}
+    password: ${DATABASE_PASSWORD:secret}
+
+    hikari:
+      maximum-pool-size: 3
+
+  jooq:
+    sql-dialect: postgres_10
+
+  cloud:
+    kubernetes:
+      reload:
+        enabled: true
+
+grpc:
+  server:
+    port: 9090
+
+  client:
+    account-service:
+      address: "dns:///${ACCOUNT_SERVICE_HOST:localhost}:${ACCOUNT_SERVER_PORT:9090}"
+      negotiationType: PLAINTEXT
