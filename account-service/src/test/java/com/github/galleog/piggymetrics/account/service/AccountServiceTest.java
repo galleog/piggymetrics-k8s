@@ -21,6 +21,8 @@ import com.github.galleog.piggymetrics.account.domain.Account;
 import com.github.galleog.piggymetrics.account.domain.Item;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
+import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.AccountUpdatedEvent;
+import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.GetAccountRequest;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.ItemType;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.TimePeriod;
 import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc;
@@ -65,10 +67,9 @@ import java.util.concurrent.BlockingQueue;
 public class AccountServiceTest {
     private static final String USD = "USD";
     private static final String NAME = "test";
-    private static final AccountServiceProto.GetAccountRequest GET_ACCOUNT_REQUEST =
-            AccountServiceProto.GetAccountRequest.newBuilder()
-                    .setName(NAME)
-                    .build();
+    private static final GetAccountRequest GET_ACCOUNT_REQUEST = GetAccountRequest.newBuilder()
+            .setName(NAME)
+            .build();
     private static final String NOTE = "note";
     private static final Item GROCERY = Item.builder()
             .title("Grocery")
@@ -241,11 +242,12 @@ public class AccountServiceTest {
 
         assertThat(messages).extracting(msg -> (byte[]) msg.getPayload())
                 .containsExactly(
-                        AccountServiceProto.AccountUpdatedEvent.newBuilder()
+                        AccountUpdatedEvent.newBuilder()
                                 .setAccountName(NAME)
                                 .addItems(rent)
                                 .addItems(meal)
                                 .setSaving(saving)
+                                .setNote(NOTE)
                                 .build()
                                 .toByteArray()
                 );

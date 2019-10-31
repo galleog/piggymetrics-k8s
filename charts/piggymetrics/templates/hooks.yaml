@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "piggymetrics.fullname" . }}-create-vsvc-job
+  annotations:
+    "helm.sh/hook": post-install, post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": hook-succeeded
+  labels:
+    {{- include "piggymetrics.labels" . | nindent 4 }}
+spec:
+  template:
+    spec:
+      serviceAccountName: {{ include "piggymetrics.fullname" . }}-hook
+      containers:
+        - name: create-vsvc-job
+          image: {{ .Values.kubectl.image | quote }}
+          imagePullPolicy: {{ .Values.kubectl.imagePullPolicy }}
+          command:
+            - sh
+            - -c
+            - eval "echo \"$(cat /etc/pgm/istio-vsvc.yaml)\"" | kubectl apply -f -
+          env:
+            - name: KEYCLOAK_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.keycloak.configMap }}
+                  key: keycloak-host
+            - name: KEYCLOAK_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.keycloak.configMap }}
+                  key: keycloak-port
+          volumeMounts:
+            - name: istio-vsvc-config
+              mountPath: /etc/pgm
+      restartPolicy: Never
+      volumes:
+        - name: istio-vsvc-config
+          configMap:
+            name: {{ include "piggymetrics.fullname" . }}-istio-vsvc-config
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "piggymetrics.fullname" . }}-delete-vsvc-job
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": hook-succeeded
+  labels:
+    {{- include "piggymetrics.labels" . | nindent 4 }}
+spec:
+  template:
+    spec:
+      serviceAccountName: {{ include "piggymetrics.fullname" . }}-hook
+      containers:
+        - name: delete-vsvc-job
+          image: {{ .Values.kubectl.image | quote }}
+          imagePullPolicy: {{ .Values.kubectl.imagePullPolicy }}
+          command:
+            - sh
+            - -c
+            - kubectl delete virtualservices {{ include "piggymetrics.fullname" . }}
+      restartPolicy: Never

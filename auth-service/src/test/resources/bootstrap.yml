@@ -1,7 +1,0 @@
-spring:
-  application:
-    name: auth-service
-
-  cloud:
-    kubernetes:
-      enabled: false

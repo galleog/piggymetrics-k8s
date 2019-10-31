@@ -1,0 +1,51 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ include "piggymetrics.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "piggymetrics.labels" . | nindent 4 }}
+spec:
+  hosts:
+    - '*'
+  gateways:
+    - {{ include "piggymetrics.fullname" . }}
+  http:
+    - match:
+        - uri:
+            prefix: '/auth'
+      route:
+        - destination:
+            host: $KEYCLOAK_HOST
+            port:
+              number: $KEYCLOAK_PORT
+    - match:
+        - uri:
+            prefix: '/accounts'
+        - uri:
+            prefix: '/notifications'
+        - uri:
+            prefix: '/statistics'
+      route:
+        - destination:
+            host: {{ .Release.Name }}-api-gateway.{{ .Release.Namespace }}.svc.cluster.local
+            port:
+              number: {{ .Values.global.pgm.gateway.port }}
+    - match:
+        - uri:
+            prefix: '/css'
+        - uri:
+            prefix: '/fonts'
+        - uri:
+            prefix: '/images'
+        - uri:
+            prefix: '/js'
+        - uri:
+            regex: '/.+\.(html|json)'
+        - uri:
+            exact: '/'
+      route:
+        - destination:
+            host: {{ .Release.Name }}-pgm-frontend.{{ .Release.Namespace }}.svc.cluster.local
+            port:
+              number: {{ .Values.global.pgm.frontend.port }}

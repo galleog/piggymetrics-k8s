@@ -1,23 +1,23 @@
 buildscript {
     dependencies {
-        classpath 'org.testcontainers:postgresql:1.11.4'
+        classpath 'org.testcontainers:postgresql:1.12.0'
     }
 }
 
 plugins {
-    id 'org.springframework.boot' version '2.1.6.RELEASE' apply false
+    id 'org.springframework.boot' version '2.1.9.RELEASE' apply false
     id 'com.google.protobuf' version '0.8.10' apply false
-    id 'com.google.cloud.tools.jib' version '1.3.0' apply false
+    id 'com.google.cloud.tools.jib' version '1.5.1' apply false
     id 'nu.studer.jooq' version '3.0.3' apply false
+    id 'com.github.johnrengelman.shadow' version '4.0.4' apply false
 }
 
 ext {
     ver = [
-            springCloud              : 'Greenwich.SR2',
-            springSecurityOauth      : '2.3.4.RELEASE',
+            springCloud              : 'Greenwich.SR3',
             dbsetup                  : '2.1.0',
             moneta                   : '1.3',
-            jacksonDatatypeMoney     : '1.0.1',
+            jacksonDatatypeMoney     : '1.1.1',
             lombok                   : '1.18.8',
             guava                    : '28.0-jre',
             assertjDb                : '1.2.0',
@@ -26,33 +26,36 @@ ext {
             commonsIo                : '2.6',
             shedlock                 : '2.5.0',
             simpleJavaMail           : '5.0.3',
-            testcontainers           : '1.11.4',
+            testcontainers           : '1.12.0',
             postgresql               : '42.2.5',
-            grpc                     : '1.21.0',
-            reactiveGrpc             : '0.10.0',
-            protobuf                 : '3.8.0',
-            grpcSpringBoot           : '2.4.0.RELEASE',
-            protobufSpringCloudStream: '0.0.2'
+            grpc                     : '1.22.2',
+            reactiveGrpc             : '1.0.0',
+            protobuf                 : '3.9.1',
+            grpcSpringBoot           : '2.5.1.RELEASE',
+            protobufSpringCloudStream: '0.0.2',
+            kafka                    : '2.2.1',
+            jbossLogging             : '3.3.2.Final',
+            keycloak                 : '6.0.1',
+            kafkaProtobuf            : '2.2.0',
+            slf4jJbossLogging        : '1.2.0.Final'
     ]
 
     database = [
             driver  : 'org.testcontainers.jdbc.ContainerDatabaseDriver',
-            url     : 'jdbc:tc:postgresql:10.7-alpine://localhost/databasename?TC_INITFUNCTION=com.github.galleog.liquibase.tc.LiquibaseUpdater::update',
+            url     : 'jdbc:tc:postgresql:11.5-alpine://localhost/databasename?TC_INITFUNCTION=com.github.galleog.liquibase.tc.LiquibaseUpdater::update',
             username: 'test',
             password: 'test'
     ]
 }
 
 allprojects {
+    apply plugin: 'java'
+    apply plugin: 'jacoco'
     apply plugin: 'idea'
+    apply plugin: 'io.spring.dependency-management'
 
     group = 'com.github.galleog.piggymetrics'
     version = '1.0-SNAPSHOT'
-}
-
-subprojects {
-    apply plugin: 'java'
-    apply plugin: 'io.spring.dependency-management'
 
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
@@ -72,12 +75,11 @@ subprojects {
         imports {
             mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
             mavenBom "org.springframework.cloud:spring-cloud-dependencies:${ver.springCloud}"
+            mavenBom "org.keycloak.bom:keycloak-spi-bom:${ver.keycloak}"
             mavenBom "org.junit:junit-bom:${ver.junit}"
         }
 
         dependencies {
-            dependency "org.springframework.security.oauth:spring-security-oauth2:${ver.springSecurityOauth}"
-            dependency "io.grpc:grpc-netty:${ver.grpc}"
             dependency "io.grpc:grpc-protobuf:${ver.grpc}"
             dependency "io.grpc:grpc-stub:${ver.grpc}"
             dependency "io.grpc:grpc-services:${ver.grpc}"
@@ -97,11 +99,17 @@ subprojects {
             dependency "org.simplejavamail:simple-java-mail:${ver.simpleJavaMail}"
             dependency "org.projectlombok:lombok:${ver.lombok}"
             dependency "org.testcontainers:postgresql:${ver.testcontainers}"
+            dependency "org.testcontainers:kafka:${ver.testcontainers}"
             dependency "org.testcontainers:junit-jupiter:${ver.testcontainers}"
             dependency "org.postgresql:postgresql:${ver.postgresql}"
             dependency "net.devh:grpc-server-spring-boot-starter:${ver.grpcSpringBoot}"
             dependency "net.devh:grpc-client-spring-boot-starter:${ver.grpcSpringBoot}"
             dependency "io.disc99:protocol-buffers-spring-cloud-stream-starter:${ver.protobufSpringCloudStream}"
+            dependency "org.apache.kafka:kafka-clients:${ver.kafka}"
+            dependency "org.jboss.logging:jboss-logging:${ver.jbossLogging}"
+            dependency "org.jboss.slf4j:slf4j-jboss-logging:${ver.slf4jJbossLogging}"
+            dependency "org.keycloak:keycloak-server-spi-private:${ver.keycloak}"
+            dependency "com.github.daniel-shuy:kafka-protobuf-serde:${ver.kafkaProtobuf}"
         }
     }
 
@@ -124,5 +132,20 @@ subprojects {
 
     test {
         useJUnitPlatform()
+    }
+}
+
+task codeCoverageReport(type: JacocoReport) {
+    executionData fileTree(project.rootDir.absolutePath).include("**/build/jacoco/*.exec")
+
+    subprojects.each {
+        sourceSets it.sourceSets.main
+    }
+
+    reports {
+        xml.enabled true
+        xml.destination file("${buildDir}/reports/jacoco/report.xml")
+        html.enabled false
+        csv.enabled false
     }
 }

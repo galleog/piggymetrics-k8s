@@ -1,0 +1,123 @@
+# Default values for pgm-dependencies.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+postgresql:
+  enabled: true
+  image:
+    tag: 11.5.0
+    pullPolicy: IfNotPresent
+  service:
+    type: NodePort
+  initdbScriptsConfigMap: pgm-postgres-init
+
+  extraEnv:
+    - name: KEYCLOAK_POSTGRES_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: '{{ .Values.global.postgresql.secret }}'
+          key: keycloak-postgres-password
+    - name: PGM_POSTGRES_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: '{{ .Values.global.postgresql.secret }}'
+          key: pgm-postgres-password
+
+kafka:
+  enabled: true
+  image:
+    tag: 2.2.1
+  service:
+    type: NodePort
+    port: 9092
+
+keycloak:
+  enabled: true
+
+  keycloak:
+    service:
+      type: NodePort
+      port: 8080
+    username: keycloak
+
+    persistence:
+      deployPostgres: false
+      dbVendor: postgres
+      dbHost: dummy
+      dbName: keycloak
+      dbPort: 5432
+      dbUser: keycloak
+      existingSecret: pgm-postgres-secret
+      existingSecretKey: keycloak-postgres-password
+
+    extraArgs: -Dkeycloak.import=/realm/pgm-realm.json
+
+    extraEnv: |
+      - name: DB_ADDR
+        valueFrom:
+          configMapKeyRef:
+            name: {{ .Values.global.postgresql.configMap }}
+            key: postgres-host
+      - name: KAFKA_BROKERS
+        valueFrom:
+          configMapKeyRef:
+            name: {{ .Values.global.kafka.configMap }}
+            key: kafka-brokers
+      - name: USER_EVENTS_TOPIC
+        value: {{ .Values.global.kafka.topic.userEvents }}
+
+    extraInitContainers: |
+      - name: wait-for-postgres-and-kafka
+        image: "{{ .Values.init.image.repository }}:{{ .Values.init.image.tag }}"
+        imagePullPolicy: {{ .Values.init.image.pullPolicy }}
+        command:
+          - sh
+          - -c
+          - |
+            broker=$(echo "$KAFKA_BROKERS" | sed 's/\([^:]\+\):\([0-9]\+\).*/\1 \2/')
+            until printf "." && nc -z -w 2 $DATABASE_HOST {{ .Values.global.postgresql.servicePort }} && nc -z -w 2 $broker; do
+                sleep 2;
+            done;
+            echo 'PostgreSQL & Kafka OK ✓'
+        env:
+          - name: DATABASE_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: {{ .Values.global.postgresql.configMap }}
+                key: postgres-host
+          - name: KAFKA_BROKERS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ .Values.global.kafka.configMap }}
+                key: kafka-brokers
+        resources:
+          {{- toYaml .Values.init.resources | nindent 12 }}
+      - name: event-provider
+        image: {{ .Values.global.keycloak.provider.image | quote }}
+        imagePullPolicy: {{ .Values.global.keycloak.provider.imagePullPolicy }}
+        command:
+          - sh
+          - -c
+          - |
+            echo "Copying event provider"
+            cp /app/keycloak-provider.jar /providers
+        volumeMounts:
+          - name: provider
+            mountPath: /providers
+
+    extraVolumeMounts: |
+      - name: provider
+        mountPath: /opt/jboss/keycloak/providers
+      - name: realm-secret
+        mountPath: /realm
+        readOnly: true
+
+    extraVolumes: |
+      - name: provider
+        emptyDir: {}
+      - name: realm-secret
+        secret:
+          secretName: {{ .Release.Name }}-realm-secret
+
+  test:
+    enabled: false

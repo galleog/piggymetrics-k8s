@@ -1,17 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.global.accountService.host }}
+  name: {{ .Release.Name }}-account-service
   labels:
-    app.kubernetes.io/name: {{ include "account-service.name" . }}
-    helm.sh/chart: {{ include "account-service.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    {{- include "account-service.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
     - name: grpc
-      port: {{ .Values.global.accountService.port }}
+      port: {{ .Values.global.pgm.accountService.port }}
       targetPort: grpc
       protocol: TCP
   selector:

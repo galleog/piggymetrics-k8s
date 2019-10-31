@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "notification-service.fullname" . }}
+  labels:
+    {{- include "notification-service.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "notification-service.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "true"
+      labels:
+        app.kubernetes.io/name: {{ include "notification-service.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ default "default" .Values.global.pgm.serviceAccount }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+            - name: JAVA_TOOL_OPTIONS
+            {{- if .Values.debug.enabled }}
+              value: "-XX:+PrintFlagsFinal -XX:MaxRAMPercentage=50.0 -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address={{ default 5005 .Values.debug.port }}"
+            {{- else }}
+              value: "-XX:+PrintFlagsFinal -XX:MaxRAMPercentage=50.0"
+            {{- end }}
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.postgresql.configMap }}
+                  key: postgres-host
+            - name: DATABASE_PORT
+              value: {{ .Values.global.postgresql.servicePort | quote }}
+            - name: DATABASE_NAME
+              value: {{ .Values.global.pgm.dbName }}
+            - name: DATABASE_USER
+              value: {{ .Values.global.pgm.dbUser }}
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.postgresql.secret }}
+                  key: pgm-postgres-password
+            - name: DATABASE_SCHEMA
+              value: {{ .Values.global.pgm.notificationService.dbSchema }}
+            - name: ACCOUNT_SERVICE_HOST
+              value: {{ .Release.Name }}-account-service.{{ .Release.Namespace }}.svc.cluster.local
+            - name: ACCOUNT_SERVER_PORT
+              value: {{ .Values.global.pgm.accountService.port | quote }}
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.kafka.configMap }}
+                  key: kafka-brokers
+            - name: USER_EVENTS_TOPIC
+              value: {{ .Values.global.kafka.topic.userEvents }}
+          ports:
+            - name: grpc
+              containerPort: 9090
+              protocol: TCP
+          livenessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=127.0.0.1:9090", "-service=piggymetrics.notification.RecipientService"]
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ default 10 .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ default 1 .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3 .Values.livenessProbe.failureThreshold }}
+          readinessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=127.0.0.1:9090", "-service=piggymetrics.notification.RecipientService"]
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ default 10 .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ default 1 .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3 .Values.readinessProbe.failureThreshold }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

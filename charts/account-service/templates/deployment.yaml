@@ -3,10 +3,7 @@ kind: Deployment
 metadata:
   name: {{ include "account-service.fullname" . }}
   labels:
-    app.kubernetes.io/name: {{ include "account-service.name" . }}
-    helm.sh/chart: {{ include "account-service.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    {{- include "account-service.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -21,41 +18,45 @@ spec:
         app.kubernetes.io/name: {{ include "account-service.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
-      serviceAccountName: {{ default "default" .Values.global.serviceAccount }}
+      serviceAccountName: {{ default "default" .Values.global.pgm.serviceAccount }}
       containers:
         - name: {{ .Chart.Name }}
           image: {{ .Values.image | quote }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           env:
+            - name: JAVA_TOOL_OPTIONS
+            {{- if .Values.debug.enabled }}
+              value: "-XX:+PrintFlagsFinal -XX:MaxRAMPercentage=50.0 -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address={{ default 5005 .Values.debug.port }}"
+            {{- else }}
+              value: "-XX:+PrintFlagsFinal -XX:MaxRAMPercentage=50.0"
+            {{- end }}
             - name: DATABASE_HOST
               valueFrom:
                 configMapKeyRef:
                   name: {{ .Values.global.postgresql.configMap }}
-                  key: postgresql-host
+                  key: postgres-host
             - name: DATABASE_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.postgresql.configMap }}
-                  key: postgresql-port
+              value: {{ .Values.global.postgresql.servicePort | quote }}
             - name: DATABASE_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.postgresql.configMap }}
-                  key: postgresql-database
+              value: {{ .Values.global.pgm.dbName }}
             - name: DATABASE_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.global.postgresql.secret }}
-                  key: postgresql-user
+              value: {{ .Values.global.pgm.dbUser }}
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.global.postgresql.secret }}
-                  key: postgresql-password
-            - name: AUTH_SERVICE_HOST
-              value: {{ .Values.global.authService.host | quote }}
-            - name: AUTH_SERVICE_PORT
-              value: {{ .Values.global.authService.port | quote }}
+                  key: pgm-postgres-password
+            - name: DATABASE_SCHEMA
+              value: {{ .Values.global.pgm.accountService.dbSchema }}
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.kafka.configMap }}
+                  key: kafka-brokers
+            - name: USER_EVENTS_TOPIC
+              value: {{ .Values.global.kafka.topic.userEvents }}
+            - name: ACCOUNT_EVENTS_TOPIC
+              value: {{ .Values.global.kafka.topic.accountEvents }}
           ports:
             - name: grpc
               containerPort: 9090
@@ -64,17 +65,23 @@ spec:
             exec:
               command: ["/bin/grpc_health_probe", "-addr=127.0.0.1:9090", "-service=piggymetrics.account.AccountService"]
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ default 10 .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ default 1 .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3 .Values.livenessProbe.failureThreshold }}
           readinessProbe:
             exec:
               command: ["/bin/grpc_health_probe", "-addr=127.0.0.1:9090", "-service=piggymetrics.account.AccountService"]
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ default 10 .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ default 1 .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3 .Values.readinessProbe.failureThreshold }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-    {{- with .Values.affinity }}
+      {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
     {{- end }}

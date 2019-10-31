@@ -3,9 +3,6 @@ kind: ConfigMap
 metadata:
   name: account-service
   labels:
-    app.kubernetes.io/name: {{ include "account-service.name" . }}
-    helm.sh/chart: {{ include "account-service.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    {{- include "account-service.labels" . | nindent 4 }}
 data:
   {{- (.Files.Glob "files/application.yml").AsConfig | nindent 2 }}

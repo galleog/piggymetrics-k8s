@@ -10,6 +10,8 @@ import com.github.galleog.piggymetrics.account.domain.ItemType;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.domain.TimePeriod;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
+import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.AccountUpdatedEvent;
+import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.GetAccountRequest;
 import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
 import com.google.common.base.Converter;
@@ -21,6 +23,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.cloud.stream.messaging.Source;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 
@@ -45,14 +48,14 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
     private final AccountRepository repository;
 
     @Override
-    public Mono<AccountServiceProto.Account> getAccount(Mono<AccountServiceProto.GetAccountRequest> request) {
+    public Mono<AccountServiceProto.Account> getAccount(Mono<GetAccountRequest> request) {
         return request.flatMap(req ->
                 async(() ->
                         repository.getByName(req.getName())
                                 .orElseThrow(() -> Status.NOT_FOUND
                                         .withDescription("Account for user '" + req.getName() + "' not found")
                                         .asRuntimeException())
-                ).doOnNext(account -> logger.debug("Account for user '{}' found", account))
+                ).doOnNext(account -> logger.debug("Account for user '{}' found", req.getName()))
         ).map(ACCOUNT_CONVERTER::convert);
     }
 
@@ -62,6 +65,7 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
                 .map(ACCOUNT_CONVERTER::convert);
     }
 
+    @Transactional
     private Account doUpdateAccount(AccountServiceProto.Account account) {
         Account updated = repository.update(ACCOUNT_CONVERTER.reverse().convert(account))
                 .orElseThrow(() -> Status.NOT_FOUND
@@ -69,10 +73,11 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
                         .asRuntimeException());
 
         // send an AccountUpdated event
-        AccountServiceProto.AccountUpdatedEvent event = AccountServiceProto.AccountUpdatedEvent.newBuilder()
+        AccountUpdatedEvent event = AccountUpdatedEvent.newBuilder()
                 .setAccountName(account.getName())
                 .addAllItems(account.getItemsList())
                 .setSaving(account.getSaving())
+                .setNote(account.getNote())
                 .build();
         source.output().send(MessageBuilder.withPayload(event).build());
 

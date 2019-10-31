@@ -1,0 +1,48 @@
+{
+  "realm": "piggymetrics",
+  "enabled": true,
+  "registrationAllowed": true,
+  "accessTokenLifespan": 60,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "ssoSessionIdleTimeout": 600,
+  "ssoSessionMaxLifespan": 36000,
+  "sslRequired": "external",
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "User privileges"
+      }
+    ]
+  },
+  "defaultRoles": [
+    "user"
+  ],
+  "requiredCredentials": [
+    "password"
+  ],
+  "clients": [
+    {
+      "clientId": "api-proxy",
+      "enabled": true,
+      "secret": "secret",
+      "bearerOnly": true
+    },
+    {
+      "clientId": "frontend",
+      "enabled": true,
+      "secret": "secret",
+      "publicClient": true,
+      "redirectUris": [
+        "*"
+      ]
+    }
+  ],
+  "eventsListeners": [
+    "piggymetrics"
+  ],
+  "enabledEventTypes": [
+    "REGISTER"
+  ]
+}

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-pgm-frontend
+  labels:
+    {{- include "pgm-frontend.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.global.pgm.frontend.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: {{ include "pgm-frontend.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}

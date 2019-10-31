@@ -1,0 +1,42 @@
+global:
+  postgresql:
+    servicePort: 5432
+    secret: pgm-postgres-secret
+    configMap: pgm-postgres-host
+
+  kafka:
+    servicePort: 9092
+    configMap: pgm-kafka-brokers
+
+    topic:
+      userEvents: user-events
+      accountEvents: account-events
+
+  keycloak:
+    configMap: pgm-keycloak-host
+    provider:
+      image: galleog/piggymetrics-keycloak-provider:latest
+      imagePullPolicy: Always
+
+  pgm:
+    serviceAccount: pod-reader
+    dbName: pgm
+    dbUser: pgm
+
+    frontend:
+      port: 80
+
+    gateway:
+      port: 8080
+
+    accountService:
+      port: 9090
+      dbSchema: account_service
+
+    notificationService:
+      port: 9090
+      dbSchema: notification_service
+
+    statisticsService:
+      port: 9090
+      dbSchema: statistics_service

@@ -8,7 +8,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: username
-                  type: varchar(20)
+                  type: varchar(255)
                   constraints:
                     primaryKey: true
                     primaryKeyName: pk_recipients
@@ -28,7 +28,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: username
-                  type: varchar(20)
+                  type: varchar(255)
                   constraints:
                     nullable: false
               - column:

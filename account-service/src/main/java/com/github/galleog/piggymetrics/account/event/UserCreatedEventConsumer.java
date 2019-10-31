@@ -3,7 +3,7 @@ package com.github.galleog.piggymetrics.account.event;
 import com.github.galleog.piggymetrics.account.domain.Account;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
-import com.github.galleog.piggymetrics.auth.grpc.UserServiceProto;
+import com.github.galleog.piggymetrics.auth.UserCreatedEventOuterClass.UserCreatedEvent;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +31,7 @@ public class UserCreatedEventConsumer {
 
     @Transactional
     @StreamListener(Sink.INPUT)
-    public void createAccount(UserServiceProto.UserCreatedEvent event) {
+    public void createAccount(UserCreatedEvent event) {
         logger.info("UserCreated event for user '{}' received", event.getUserName());
 
         if (accountRepository.getByName(event.getUserName()).isPresent()) {

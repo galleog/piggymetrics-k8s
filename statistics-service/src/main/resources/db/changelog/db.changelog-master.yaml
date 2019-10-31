@@ -8,7 +8,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: account_name
-                  type: varchar(20)
+                  type: varchar(255)
                   constraints:
                     nullable: false
               - column:
@@ -42,7 +42,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: account_name
-                  type: varchar(20)
+                  type: varchar(255)
                   constraints:
                     nullable: false
               - column:
@@ -95,7 +95,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: account_name
-                  type: varchar(20)
+                  type: varchar(255)
                   constraints:
                     nullable: false
               - column:

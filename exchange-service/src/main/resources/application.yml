@@ -1,7 +1,0 @@
-spring:
-  jmx:
-    enabled: false
-
-grpc:
-  server:
-    port: 9090

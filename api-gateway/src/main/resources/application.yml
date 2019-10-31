@@ -1,0 +1,32 @@
+spring:
+  jmx:
+    enabled: false
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      WRITE_DATES_AS_TIMESTAMPS: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: "http://${KEYCLOAK_HOST:localhost}:${KEYCLOAK_PORT:8080}/auth/realms/piggymetrics/protocol/openid-connect/certs"
+
+grpc:
+  client:
+    account-service:
+      address: "dns:///${ACCOUNT_SERVICE_HOST:localhost}:${ACCOUNT_SERVICE_PORT:9090}"
+      negotiationType: PLAINTEXT
+
+    auth-service:
+      address: "dns:///${AUTH_SERVICE_HOST:localhost}:${AUTH_SERVICE_PORT:9090}"
+      negotiationType: PLAINTEXT
+
+    notification-service:
+      address: "dns:///${NOTIFICATION_SERVICE_HOST:localhost}:${NOTIFICATION_SERVICE_PORT:9090}"
+      negotiationType: PLAINTEXT
+
+    statistics-service:
+      address: "dns:///${STATISTICS_SERVICE_HOST:localhost}:${STATISTICS_SERVICE_PORT:9090}"
+      negotiationType: PLAINTEXT

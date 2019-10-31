@@ -65,7 +65,7 @@ message Account {
     repeated Item items = 2;
     // Required. Account savings.
     Saving saving = 3;
-    // Output only. Date and time when the account was last changed
+    // Read-only. Date and time when the account was last changed
     google.protobuf.Timestamp update_time = 4;
     // Additional note.
     string note = 5;
@@ -79,6 +79,8 @@ message AccountUpdatedEvent {
     repeated Item items = 2;
     // Required. Account savings.
     Saving saving = 3;
+    // Additional note.
+    string note = 4;
 }
 
 // Service to work with accounts.

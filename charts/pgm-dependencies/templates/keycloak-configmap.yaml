@@ -1,0 +1,11 @@
+{{- if .Values.keycloak.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.global.keycloak.configMap }}
+  labels:
+    {{- include "pgm-dependencies.labels" . | nindent 4 }}
+data:
+  keycloak-host: {{ include "pgm-dependencies.keycloak.host" . }}
+  keycloak-port: {{ .Values.keycloak.keycloak.service.port | quote }}
+{{- end }}

@@ -12,12 +12,42 @@ spring:
       maximum-pool-size: 3
 
   jooq:
+    schema: ${DATABASE_SCHEMA:notification_service}
     sql-dialect: postgres_10
+
+  liquibase:
+    default-schema: ${DATABASE_SCHEMA:notification_service}
 
   cloud:
     kubernetes:
       reload:
         enabled: true
+
+    stream:
+      bindings:
+        input:
+          destination: ${USER_EVENTS_TOPIC:user-events}
+          content-type: application/x-protobuf
+
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+
+  mail:
+    host: smtp.gmail.com
+    port: 465
+    username: dev-user
+    password: dev-password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+            fallback: false
+          ssl:
+            enable: true
 
 grpc:
   server:

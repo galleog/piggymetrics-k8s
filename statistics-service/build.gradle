@@ -19,7 +19,6 @@ dependencies {
             'org.springframework.boot:spring-boot-starter-jooq',
             'org.springframework.cloud:spring-cloud-starter-stream-kafka',
             'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
-            'io.grpc:grpc-netty',
             'io.grpc:grpc-protobuf',
             'io.grpc:grpc-stub',
             'io.grpc:grpc-services',
@@ -33,6 +32,7 @@ dependencies {
             'org.aspectj:aspectjrt',
             'org.aspectj:aspectjweaver',
             'org.postgresql:postgresql',
+            'org.slf4j:jul-to-slf4j'
     )
 
     compileOnly(
@@ -90,7 +90,7 @@ protobuf {
             artifact = "io.grpc:protoc-gen-grpc-java:${ver.grpc}"
         }
         reactor {
-            artifact = "com.salesforce.servicelibs:reactor-grpc:${ver.reactiveGrpc}:jdk8@jar"
+            artifact = "com.salesforce.servicelibs:reactor-grpc:${ver.reactiveGrpc}"
         }
     }
     generateProtoTasks {
@@ -116,16 +116,7 @@ idea {
 
 jib {
     from {
-        image = 'galleog/grpc-health-probe:latest'
-    }
-    to {
-        image = "galleog/piggymetrics:statistics-service"
-    }
-    container {
-        jvmFlags = [
-                '-XX:+PrintFlagsFinal',
-                '-XX:MaxRAMPercentage=50.0'
-        ]
+        image = 'galleog/grpc-health-probe:alpine'
     }
 }
 

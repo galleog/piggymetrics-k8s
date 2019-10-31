@@ -2,40 +2,21 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-global:
-  serviceAccount: pod-reader
-
-  postgresql:
-    enabled: false
-    configMap: piggymetrics-postgresql
-    secret: piggymetrics-postgresql
-
-  accountService:
-    host: account-service
-    port: 9090
-
-  authService:
-    host: auth-service
-    port: 9090
-
-postgresqlClient:
-  image: jbergknoff/postgresql-client:latest
-  imagePullPolicy: IfNotPresent
-
 replicaCount: 1
 
-image: piggymetrics/account-service:stable
+debug:
+  enabled: false
+
+image: galleog/piggymetrics-account-service:latest
 imagePullPolicy: IfNotPresent
 
 livenessProbe:
   initialDelaySeconds: 180
+  periodSeconds: 30
+  timeoutSeconds: 3
+  failtureThreshold: 10
 readinessProbe:
   initialDelaySeconds: 10
-
-database:
-  schema: account_service
-  user: account_service
-  password: ""
 
 service:
   type: ClusterIP

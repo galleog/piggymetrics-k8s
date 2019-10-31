@@ -32,10 +32,23 @@ Create chart name and version as used by the chart label.
 {{- end -}}
 
 {{/*
+Common labels
+*/}}
+{{- define "piggymetrics.labels" -}}
+app.kubernetes.io/name: {{ include "piggymetrics.name" . }}
+helm.sh/chart: {{ include "piggymetrics.chart" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end -}}
+
+{{/*
 Create the name of a service account to use
 */}}
 {{- define "piggymetrics.serviceAccount.name" -}}
-{{ default "default" .Values.global.serviceAccount }}
+{{ default "default" .Values.global.pgm.serviceAccount }}
 {{- end -}}
 
 {{/*

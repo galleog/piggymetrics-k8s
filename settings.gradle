@@ -9,23 +9,21 @@ pluginManagement {
 
 rootProject.name = 'piggymetrics-k8s'
 
-include ':piggymetrics-core'
+include ':pgm-core'
 include ':grpc-common'
-include ':gateway'
-include ':auth-service'
+include ':api-gateway'
 include ':account-service'
 include ':statistics-service'
 include ':notification-service'
-include 'exchange-service'
 include 'liquibase-tc'
+include 'keycloak-provider'
 
-project(':piggymetrics-core').projectDir = "$rootDir/piggymetrics-core" as File
+project(':pgm-core').projectDir = "$rootDir/pgm-core" as File
 project(':grpc-common').projectDir = "$rootDir/grpc-common" as File
-project(':gateway').projectDir = "$rootDir/gateway" as File
-project(':auth-service').projectDir = "$rootDir/auth-service" as File
+project(':api-gateway').projectDir = "$rootDir/api-gateway" as File
 project(':account-service').projectDir = "$rootDir/account-service" as File
 project(':statistics-service').projectDir = "$rootDir/statistics-service" as File
 project(':notification-service').projectDir = "$rootDir/notification-service" as File
-project(':exchange-service').projectDir = "$rootDir/exchange-service" as File
 project(':liquibase-tc').projectDir = "$rootDir/liquibase-tc" as File
+project(':keycloak-provider').projectDir = "$rootDir/keycloak-provider" as File
 

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-statistics-service
+  labels:
+    {{- include "statistics-service.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: grpc
+      port: {{ .Values.global.pgm.statisticsService.port }}
+      targetPort: grpc
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: {{ include "statistics-service.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}

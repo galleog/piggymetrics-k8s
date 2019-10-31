@@ -2,8 +2,8 @@
 
 # Piggy Metrics
 
-This project demonstrates [Microservice Architecture Pattern](http://martinfowler.com/microservices/) using Spring Boot, Spring Cloud, Kubernetes and gRPC.
-It is derived from the MIT-licensed code of Alexander Lukyanchikov (http://sqshq.com), [PiggyMetrics](https://github.com/sqshq/PiggyMetrics).
+This project demonstrates [Microservice Architecture Pattern](http://martinfowler.com/microservices/) using Spring Boot, Spring Cloud, Kubernetes, Istio and gRPC.
+It is derived from the MIT-licensed code of Alexander Lukyanchikov, [PiggyMetrics](https://github.com/sqshq/PiggyMetrics).
 
 ![](https://cloud.githubusercontent.com/assets/6069066/13864234/442d6faa-ecb9-11e5-9929-34a9539acde0.png)
 ![Piggy Metrics](https://cloud.githubusercontent.com/assets/6069066/13830155/572e7552-ebe4-11e5-918f-637a49dff9a2.gif)
@@ -31,10 +31,10 @@ Performs calculations on major statistics parameters and captures time series fo
 
 Method	| Path	| Description	| User authenticated	| Available from UI
 ------------- | ------------------------- | ------------- |:-------------:|:----------------:|
-GET	| /statistics/{account}	| Get specified account statistics	          |  | 	
-GET	| /statistics/current	| Get current account statistics	| × | × 
+GET	| /statistics/{account}	| Get statistics for the specifed account	          |  | 	
+GET	| /statistics/current	| Get statistics for the current account	| × | × 
 GET	| /statistics/demo	| Get demo account statistics	|   | × 
-PUT	| /statistics/{account}	| Create or update time series datapoint for specified account	|   | 
+PUT	| /statistics/{account}	| Create or update time series datapoint for the specified account	|   | 
 
 
 #### Notification service
@@ -125,60 +125,6 @@ zuul:
 
 That means all requests starting with `/notifications` will be routed to Notification service. There is no hardcoded address, as you can see. Zuul uses [Service discovery](https://github.com/sqshq/PiggyMetrics/blob/master/README.md#service-discovery) mechanism to locate Notification service instances and also [Circuit Breaker and Load Balancer](https://github.com/sqshq/PiggyMetrics/blob/master/README.md#http-client-load-balancer-and-circuit-breaker), described below.
 
-### Service discovery
-
-Another commonly known architecture pattern is Service discovery. It allows automatic detection of network locations for service instances, which could have dynamically assigned addresses because of auto-scaling, failures and upgrades.
-
-The key part of Service discovery is Registry. I use Netflix Eureka in this project. Eureka is a good example of the client-side discovery pattern, when client is responsible for determining locations of available service instances (using Registry server) and load balancing requests across them.
-
-With Spring Boot, you can easily build Eureka Registry with `spring-cloud-starter-eureka-server` dependency, `@EnableEurekaServer` annotation and simple configuration properties.
-
-Client support enabled with `@EnableDiscoveryClient` annotation an `bootstrap.yml` with application name:
-``` yml
-spring:
-  application:
-    name: notification-service
-```
-
-Now, on application startup, it will register with Eureka Server and provide meta-data, such as host and port, health indicator URL, home page etc. Eureka receives heartbeat messages from each instance belonging to a service. If the heartbeat fails over a configurable timetable, the instance will be removed from the registry.
-
-Also, Eureka provides a simple interface, where you can track running services and number of available instances: `http://localhost:8761`
-
-### Load balancer, Circuit breaker and Http client
-
-Netflix OSS provides another great set of tools. 
-
-#### Ribbon
-Ribbon is a client side load balancer which gives you a lot of control over the behaviour of HTTP and TCP clients. Compared to a traditional load balancer, there is no need in additional hop for every over-the-wire invocation - you can contact desired service directly.
-
-Out of the box, it natively integrates with Spring Cloud and Service Discovery. [Eureka Client](https://github.com/sqshq/PiggyMetrics#service-discovery) provides a dynamic list of available servers so Ribbon could balance between them.
-
-#### Hystrix
-Hystrix is the implementation of [Circuit Breaker pattern](http://martinfowler.com/bliki/CircuitBreaker.html), which gives a control over latency and failure from dependencies accessed over the network. The main idea is to stop cascading failures in a distributed environment with a large number of microservices. That helps to fail fast and recover as soon as possible - important aspects of fault-tolerant systems that self-heal.
-
-Besides circuit breaker control, with Hystrix you can add a fallback method that will be called to obtain a default value in case the main command fails.
-
-Moreover, Hystrix generates metrics on execution outcomes and latency for each command, that we can use to [monitor system behavior](https://github.com/sqshq/PiggyMetrics#monitor-dashboard).
-
-#### Feign
-Feign is a declarative Http client, which seamlessly integrates with Ribbon and Hystrix. Actually, with one `spring-cloud-starter-feign` dependency and `@EnableFeignClients` annotation you have a full set of Load balancer, Circuit breaker and Http client with sensible ready-to-go default configuration.
-
-Here is an example from Account Service:
-
-``` java
-@FeignClient(name = "statistics-service")
-public interface StatisticsServiceClient {
-
-	@RequestMapping(method = RequestMethod.PUT, value = "/statistics/{accountName}", consumes = MediaType.APPLICATION_JSON_UTF8_VALUE)
-	void updateStatistics(@PathVariable("accountName") String accountName, Account account);
-
-}
-```
-
-- Everything you need is just an interface
-- You can share `@RequestMapping` part between Spring MVC controller and Feign methods
-- Above example specifies just desired service id - `statistics-service`, thanks to autodiscovery through Eureka (but obviously you can access any resource with a specific url)
-
 ### Monitor dashboard
 
 In this project configuration, each microservice with Hystrix on board pushes metrics to Turbine via Spring Cloud Bus (with AMQP broker). The Monitoring project is just a small Spring boot application with [Turbine](https://github.com/Netflix/Turbine) and [Hystrix Dashboard](https://github.com/Netflix/Hystrix/tree/master/hystrix-dashboard).
@@ -222,28 +168,43 @@ In this [configuration](https://github.com/sqshq/PiggyMetrics/blob/master/.travi
 Keep in mind, that you are going to start 8 Spring Boot applications, 4 MongoDB instances and RabbitMq. Make sure you have `4 Gb` RAM available on your machine. You can always run just vital services though: Gateway, Registry, Config, Auth Service and Account Service.
 
 #### Before you start
-- Install Docker and Docker Compose.
-- Export environment variables: `CONFIG_SERVICE_PASSWORD`, `NOTIFICATION_SERVICE_PASSWORD`, `STATISTICS_SERVICE_PASSWORD`, `ACCOUNT_SERVICE_PASSWORD`, `MONGODB_PASSWORD` (make sure they were exported: `printenv`)
-- Make sure to build the project: `mvn package [-DskipTests]`
+- Install [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/), [Helm](https://helm.sh/docs/using_helm/) and
+[Istio](https://istio.io/docs/setup/kubernetes/).
+- To enable automatic Istio sidecar injection label the `default` namespace with `istio-injection=enabled`:
+```bash
+kubectl label namespace default istio-injection=enabled
+```
+- Edit `istio-sidecar-injector` configMap:
+```bash
+kubectl edit configmap/istio-sidecar-injector -n istio-system --validate=true
+```
+and set its `policy` value to `disabled`. This disables automatic sidecar injection unless the pod template `spec` contains
+the `sidecar.istio.io/inject` annotation with value `true`.
+- Add the `bitnami` and `codecentric` Helm repositories:
+```bash
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo add codecentric https://codecentric.github.io/helm-charts
+```
+- Clone the repository.
+-
+- Deploy PostgreSQL, Apache Kafka and Keycloak to Kubernetes:
+```bash
+helm install charts/pgm-dependencies
+```
 
 #### Production mode
-In this mode, all latest images will be pulled from Docker Hub.
-Just copy `docker-compose.yml` and hit `docker-compose up`
+In this mode, Kubernetes pods will be created using the latest images from Docker Hub. Just run
+```bash
+helm install charts/piggymetrics
+```
+Make sure all microservices runs. The command
+```bash
+kubectl get pods
+```
+should return something like:
+
+and then go to `http://localhost`.
 
 #### Development mode
-If you'd like to build images yourself (with some changes in the code, for example), you have to clone all repository and build artifacts with maven. Then, run `docker-compose -f docker-compose.yml -f docker-compose.dev.yml up`
-
-`docker-compose.dev.yml` inherits `docker-compose.yml` with additional possibility to build images locally and expose all containers ports for convenient development.
-
-#### Important endpoints
-- http://localhost:80 - Gateway
-- http://localhost:8761 - Eureka Dashboard
-- http://localhost:9000/hystrix - Hystrix Dashboard (paste Turbine stream link on the form)
-- http://localhost:8989 - Turbine stream (source for the Hystrix Dashboard)
-- http://localhost:15672 - RabbitMq management (default login/password: guest/guest)
-
-#### Notes
-All Spring Boot applications require already running [Config Server](https://github.com/sqshq/PiggyMetrics#config-service) for startup. But we can start all containers simultaneously because of `depends_on` docker-compose option.
-
-Also, Service Discovery mechanism needs some time after all applications startup. Any service is not available for discovery by clients until the instance, the Eureka server and the client all have the same metadata in their local cache, so it could take 3 heartbeats. Default heartbeat period is 30 seconds.
-
+If you'd like to build images yourself (with some changes in the code, for example), first install [Skaffold](https://skaffold.dev/).
+To build and deployed all microservices to Kubernetes run `skaffold dev`.

@@ -5,41 +5,28 @@
 nameOverride: ""
 fullnameOverride: ""
 
-global:
-  serviceAccount: pod-reader
+gatewayPort: 80
 
-  postgresql:
+kubectl:
+  image: lachlanevenson/k8s-kubectl:latest
+  imagePullPolicy: IfNotPresent
+
+pgm-frontend:
+  enabled: true
+
+api-gateway:
+  enabled: true
+  debug:
     enabled: true
-    configMap: piggymetrics-postgresql
-    secret: piggymetrics-postgresql
 
-  accountService:
-    host: account-service
-    port: 9090
-
-  authService:
-    host: auth-service
-    port: 9090
-
-postgresql:
-  image:
-    tag: 10.7.0
-    pullPolicy: IfNotPresent
-  service:
-    type: NodePort
-  postgresqlUsername: postgres
-  postgresqlPassword: ""
-  existingSecret: piggymetrics-postgresql
-
-  initdbScripts:
-    account-service-schema.sql: |
-      create schema if not exists account_service;
-
-accountService:
+account-service:
   enabled: true
 
-gateway:
-  enabled: true
+notification-service:
+  enabled: false
+
+statistics-service:
+  enabled: false
 
 serviceAccount:
   create: true

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "piggymetrics.fullname" . }}-hook
+  labels:
+    {{- include "piggymetrics.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "piggymetrics.fullname" . }}-hook
+  labels:
+    {{- include "piggymetrics.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["networking.istio.io"]
+    resources: ["virtualservices"]
+    verbs: ["get", "create", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "piggymetrics.fullname" . }}-hook
+  labels:
+    {{- include "piggymetrics.labels" . | nindent 4 }}
+roleRef:
+  kind: Role
+  name: {{ include "piggymetrics.fullname" . }}-hook
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "piggymetrics.fullname" . }}-hook

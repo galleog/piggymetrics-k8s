@@ -1,0 +1,16 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: {{ include "piggymetrics.fullname" . }}
+  labels:
+    {{- include "piggymetrics.labels" . | nindent 4 }}
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: {{ .Values.gatewayPort }}
+        name: http2
+        protocol: HTTP2
+      hosts:
+        - '*'

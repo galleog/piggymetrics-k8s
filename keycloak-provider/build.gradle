@@ -1,0 +1,65 @@
+apply plugin: 'java-library'
+apply plugin: 'com.google.protobuf'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+description = 'keycloak-provider'
+
+jar {
+    manifest {
+        attributes(
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version
+        )
+    }
+}
+
+dependencies {
+    implementation(
+            'com.google.protobuf:protobuf-java',
+            'org.apache.kafka:kafka-clients',
+            'org.apache.commons:commons-lang3',
+            'com.google.guava:guava'
+
+    )
+    implementation('com.github.daniel-shuy:kafka-protobuf-serde') {
+        exclude group: 'org.apache.kafka'
+    }
+    implementation('org.jboss.slf4j:slf4j-jboss-logging') {
+        exclude module: 'jboss-logging'
+    }
+
+    compileOnly(
+            'org.projectlombok:lombok',
+            'org.jboss.logging:jboss-logging',
+            'org.keycloak:keycloak-core',
+            'org.keycloak:keycloak-server-spi',
+            'org.keycloak:keycloak-server-spi-private'
+    )
+
+    testImplementation(
+            'org.assertj:assertj-core',
+            'org.junit.jupiter:junit-jupiter-api',
+            'org.jboss.logging:jboss-logging',
+            'org.keycloak:keycloak-core',
+            'org.keycloak:keycloak-server-spi',
+            'org.keycloak:keycloak-server-spi-private',
+            'org.mockito:mockito-junit-jupiter'
+    )
+
+    testRuntimeOnly(
+            'org.junit.jupiter:junit-jupiter-engine'
+    )
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${ver.protobuf}"
+    }
+}
+
+idea {
+    module {
+        sourceDirs += file("$buildDir/generated/source/proto/main/java")
+        generatedSourceDirs += file("$buildDir/generated/source/proto/main/java")
+    }
+}

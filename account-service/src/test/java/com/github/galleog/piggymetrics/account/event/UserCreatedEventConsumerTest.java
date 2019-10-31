@@ -12,7 +12,8 @@ import com.github.galleog.piggymetrics.account.config.ReactorTestConfig;
 import com.github.galleog.piggymetrics.account.domain.Account;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
-import com.github.galleog.piggymetrics.auth.grpc.UserServiceProto.UserCreatedEvent;
+import com.github.galleog.piggymetrics.auth.UserCreatedEventOuterClass;
+import com.github.galleog.piggymetrics.auth.UserCreatedEventOuterClass.UserCreatedEvent;
 import net.devh.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration;
 import org.javamoney.moneta.Money;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Tests for {@link UserCreatedEventConsumer}.
@@ -46,7 +48,9 @@ import java.util.Optional;
 class UserCreatedEventConsumerTest {
     private static final String USERNAME = "test";
     private static final UserCreatedEvent EVENT = UserCreatedEvent.newBuilder()
+            .setUserId(UUID.randomUUID().toString())
             .setUserName(USERNAME)
+            .setEmail("test@example.com")
             .build();
 
     @Autowired
@@ -79,7 +83,7 @@ class UserCreatedEventConsumerTest {
      * when an account with the same name already exists.
      */
     @Test
-    void shouldFailToCreateAccountWhenAlreadyExists() {
+    void shouldNotCreateAccountWhenAlreadyExists() {
         Saving saving = Saving.builder()
                 .moneyAmount(Money.of(BigDecimal.TEN, BASE_CURRENCY))
                 .interest(BigDecimal.ZERO)

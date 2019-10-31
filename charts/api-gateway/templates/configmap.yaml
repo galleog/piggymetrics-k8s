@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway
+  labels:
+    {{- include "api-gateway.labels" . | nindent 4 }}
+data:
+  {{- (.Files.Glob "files/application.yml").AsConfig | nindent 2 }}

@@ -19,7 +19,8 @@ dependencies {
             'io.grpc:grpc-stub',
             'com.google.guava:guava',
             'org.javamoney:moneta',
-            'org.slf4j:slf4j-api'
+            'org.slf4j:slf4j-api',
+            'org.slf4j:jul-to-slf4j'
     )
     
     compileOnly(
@@ -28,6 +29,7 @@ dependencies {
 
     testImplementation(
             'org.assertj:assertj-core',
+            'ch.qos.logback:logback-classic',
             'org.junit.jupiter:junit-jupiter-api'
     )
 

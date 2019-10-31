@@ -14,8 +14,7 @@ import static com.ninja_squad.dbsetup.Operations.sequenceOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
-import com.github.galleog.piggymetrics.account.AccountApplication;
-import com.github.galleog.piggymetrics.account.config.ReactorTestConfig;
+import com.github.galleog.piggymetrics.account.config.JooqConfig;
 import com.github.galleog.piggymetrics.account.domain.Account;
 import com.github.galleog.piggymetrics.account.domain.Item;
 import com.github.galleog.piggymetrics.account.domain.Saving;
@@ -27,11 +26,13 @@ import com.ninja_squad.dbsetup.operation.Operation;
 import org.assertj.db.api.Assertions;
 import org.assertj.db.type.Table;
 import org.javamoney.moneta.Money;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.jooq.JooqTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -48,9 +49,10 @@ import java.util.Optional;
 /**
  * Tests for {@link JooqAccountRepository}.
  */
+@JooqTest
 @Testcontainers
 @ActiveProfiles("test")
-@SpringBootTest(classes = {AccountApplication.class, ReactorTestConfig.class})
+@Import(JooqConfig.class)
 class JooqAccountRepositoryTest {
     private static final String ACCOUNT_1_NAME = "test1";
     private static final String ACCOUNT_2_NAME = "test2";
@@ -81,12 +83,16 @@ class JooqAccountRepositoryTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
     @Autowired
+    private DSLContext dsl;
+
     private AccountRepository repository;
     private TransactionTemplate transactionTemplate;
     private DataSourceDestination destination;
 
     @BeforeEach
     void setUp() {
+        repository = new JooqAccountRepository(dsl);
+
         transactionTemplate = new TransactionTemplate(transactionManager);
         transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 

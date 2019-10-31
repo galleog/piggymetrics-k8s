@@ -10,6 +10,7 @@ import static com.ninja_squad.dbsetup.Operations.sequenceOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
+import com.github.galleog.piggymetrics.notification.config.JooqConfig;
 import com.github.galleog.piggymetrics.notification.domain.Frequency;
 import com.github.galleog.piggymetrics.notification.domain.NotificationSettings;
 import com.github.galleog.piggymetrics.notification.domain.NotificationType;
@@ -22,11 +23,13 @@ import com.ninja_squad.dbsetup.operation.Operation;
 import org.assertj.db.api.Assertions;
 import org.assertj.db.type.DateValue;
 import org.assertj.db.type.Table;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.jooq.JooqTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -44,9 +47,10 @@ import java.util.Optional;
 /**
  * Tests for {@link JooqRecipientRepository}.
  */
-@SpringBootTest
+@JooqTest
 @Testcontainers
 @ActiveProfiles("test")
+@Import(JooqConfig.class)
 class JooqRecipientRepositoryTest {
     private static final String USERNAME_1 = "test1";
     private static final String USERNAME_2 = "test2";
@@ -65,12 +69,16 @@ class JooqRecipientRepositoryTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
     @Autowired
+    private DSLContext dsl;
+
     private RecipientRepository repository;
     private TransactionTemplate transactionTemplate;
     private DataSourceDestination destination;
 
     @BeforeEach
     void setUp() {
+        repository = new JooqRecipientRepository(dsl);
+
         transactionTemplate = new TransactionTemplate(transactionManager);
         transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 

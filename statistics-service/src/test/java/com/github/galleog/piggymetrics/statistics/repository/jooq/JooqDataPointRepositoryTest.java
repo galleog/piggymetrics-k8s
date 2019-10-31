@@ -11,6 +11,7 @@ import static com.ninja_squad.dbsetup.Operations.sequenceOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
+import com.github.galleog.piggymetrics.statistics.config.JooqConfig;
 import com.github.galleog.piggymetrics.statistics.domain.DataPoint;
 import com.github.galleog.piggymetrics.statistics.domain.ItemMetric;
 import com.github.galleog.piggymetrics.statistics.domain.ItemType;
@@ -24,11 +25,13 @@ import com.ninja_squad.dbsetup.operation.Operation;
 import org.assertj.db.api.Assertions;
 import org.assertj.db.type.DateValue;
 import org.assertj.db.type.Table;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.jooq.JooqTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -48,9 +51,10 @@ import java.util.stream.Stream;
 /**
  * Tests for {@link JooqDataPointRepository}.
  */
-@SpringBootTest
+@JooqTest
 @Testcontainers
 @ActiveProfiles("test")
+@Import(JooqConfig.class)
 class JooqDataPointRepositoryTest {
     private static final String ACCOUNT_NAME = "test";
     private static final LocalDate NOW = LocalDate.now();
@@ -76,13 +80,16 @@ class JooqDataPointRepositoryTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
     @Autowired
-    private DataPointRepository repository;
+    private DSLContext dsl;
 
+    private DataPointRepository repository;
     private TransactionTemplate transactionTemplate;
     private DataSourceDestination destination;
 
     @BeforeEach
     void setUp() {
+        repository = new JooqDataPointRepository(dsl);
+
         transactionTemplate = new TransactionTemplate(transactionManager);
         transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 

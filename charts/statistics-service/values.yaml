@@ -1,0 +1,43 @@
+# Default values for statistics-service.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+debug:
+  enabled: false
+
+image: galleog/piggymetrics-statistics-service:latest
+imagePullPolicy: IfNotPresent
+
+livenessProbe:
+  initialDelaySeconds: 180
+  periodSeconds: 30
+  timeoutSeconds: 3
+  failtureThreshold: 10
+readinessProbe:
+  initialDelaySeconds: 10
+
+database:
+  schema: statistics_service
+
+service:
+  type: ClusterIP
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+  #  memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

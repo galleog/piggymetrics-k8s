@@ -15,18 +15,19 @@ configurations {
 
 dependencies {
     compile(
-            project(':piggymetrics-core'),
+            project(':pgm-core'),
             project(':grpc-common'),
             'org.springframework.boot:spring-boot-starter-jooq',
+            'org.springframework.cloud:spring-cloud-starter-stream-kafka',
             'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
             'org.springframework.boot:spring-boot-starter-mail',
-            'io.grpc:grpc-netty',
             'io.grpc:grpc-protobuf',
             'io.grpc:grpc-stub',
             'io.grpc:grpc-services',
             'com.salesforce.servicelibs:reactor-grpc-stub',
             'net.devh:grpc-server-spring-boot-starter',
             'net.devh:grpc-client-spring-boot-starter',
+            'io.disc99:protocol-buffers-spring-cloud-stream-starter',
             'org.apache.commons:commons-lang3',
             'org.liquibase:liquibase-core',
             'com.google.guava:guava',
@@ -47,6 +48,7 @@ dependencies {
 
     testCompile(
             'org.springframework.boot:spring-boot-starter-test',
+            'org.springframework.cloud:spring-cloud-stream-test-support',
             'io.projectreactor:reactor-test',
             'io.grpc:grpc-testing',
             'org.testcontainers:postgresql',
@@ -101,7 +103,7 @@ protobuf {
             artifact = "io.grpc:protoc-gen-grpc-java:${ver.grpc}"
         }
         reactor {
-            artifact = "com.salesforce.servicelibs:reactor-grpc:${ver.reactiveGrpc}:jdk8@jar"
+            artifact = "com.salesforce.servicelibs:reactor-grpc:${ver.reactiveGrpc}"
         }
     }
     generateProtoTasks {
@@ -127,16 +129,7 @@ idea {
 
 jib {
     from {
-        image = 'galleog/grpc-health-probe:latest'
-    }
-    to {
-        image = "galleog/piggymetrics:notification-service"
-    }
-    container {
-        jvmFlags = [
-                '-XX:+PrintFlagsFinal',
-                '-XX:MaxRAMPercentage=50.0'
-        ]
+        image = 'galleog/grpc-health-probe:alpine'
     }
 }
 

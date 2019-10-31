@@ -1,14 +1,21 @@
 dependencies:
-  - name: postgresql
-    repository: https://kubernetes-charts.storage.googleapis.com
-    version: 3.9.5
-    condition: global.postgresql.enabled
+  - name: pgm-frontend
+    repository: file://../pgm-frontend
+    version: 0.1.0
+    condition: pgm-frontend.enabled
+  - name: api-gateway
+    repository: file://../api-gateway
+    version: 0.1.0
+    condition: api-gateway.enabled
   - name: account-service
     repository: file://../account-service
     version: 0.1.0
-    alias: accountService
-    condition: accountService.enabled
-  - name: gateway
-    repository: file://../gateway
+    condition: account-service.enabled
+  - name: notification-service
+    repository: file://../notification-service
     version: 0.1.0
-    condition: gateway.enabled
+    condition: notification-service.enabled
+  - name: statistics-service
+    repository: file://../statistics-service
+    version: 0.1.0
+    condition: statistics-service.enabled

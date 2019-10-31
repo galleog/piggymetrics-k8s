@@ -12,6 +12,7 @@ import org.jooq.conf.MappedSchema;
 import org.jooq.conf.RenderMapping;
 import org.jooq.conf.Settings;
 import org.jooq.impl.DefaultRecordMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -21,7 +22,8 @@ import org.springframework.context.annotation.Profile;
  */
 @Configuration
 public class JooqConfig {
-    private static final String SCHEMA_NAME = "notification_service";
+    @Value("${spring.jooq.schema}")
+    private String schema;
 
     @Bean
     @Profile("!test")
@@ -32,7 +34,7 @@ public class JooqConfig {
                                 .withSchemata(
                                         new MappedSchema()
                                                 .withInput(PUBLIC.getName())
-                                                .withOutput(SCHEMA_NAME)
+                                                .withOutput(schema)
                                 )
                 );
     }
