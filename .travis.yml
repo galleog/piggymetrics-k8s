@@ -52,13 +52,13 @@ after_success:
 
   # Statistics Service
   - export STATISTICS_SERVICE=galleog/piggymetrics-statistics-service
-  - ./gradlew -p statistics-service jibDockerBuild --image=$ACCOUNT_SERVICE -Djib.to.tags=$COMMIT
+  - ./gradlew -p statistics-service jibDockerBuild --image=$STATISTICS_SERVICE -Djib.to.tags=$COMMIT
   - docker tag $STATISTICS_SERVICE:$COMMIT $STATISTICS_SERVICE:$TAG
   - docker push $STATISTICS_SERVICE
 
   # Notification Service
   - export NOTIFICATION_SERVICE=galleog/piggymetrics-notification-service
-  - ./gradlew -p notification-service jibDockerBuild --image=$ACCOUNT_SERVICE -Djib.to.tags=$COMMIT
+  - ./gradlew -p notification-service jibDockerBuild --image=$NOTIFICATION_SERVICE -Djib.to.tags=$COMMIT
   - docker tag $NOTIFICATION_SERVICE:$COMMIT $NOTIFICATION_SERVICE:$TAG
   - docker push $NOTIFICATION_SERVICE
 
