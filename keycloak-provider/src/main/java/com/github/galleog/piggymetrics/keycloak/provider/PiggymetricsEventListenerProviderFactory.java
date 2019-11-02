@@ -1,7 +1,7 @@
 package com.github.galleog.piggymetrics.keycloak.provider;
 
 import com.github.daniel.shuy.kafka.protobuf.serde.KafkaProtobufSerializer;
-import com.github.galleog.piggymetrics.auth.UserCreatedEventOuterClass.UserCreatedEvent;
+import com.github.galleog.piggymetrics.auth.grpc.UserCreatedEventOuterClass.UserCreatedEvent;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;

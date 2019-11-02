@@ -48,9 +48,8 @@ ext {
     ]
 }
 
-allprojects {
+subprojects {
     apply plugin: 'java'
-    apply plugin: 'jacoco'
     apply plugin: 'idea'
     apply plugin: 'io.spring.dependency-management'
 
@@ -132,20 +131,5 @@ allprojects {
 
     test {
         useJUnitPlatform()
-    }
-}
-
-task codeCoverageReport(type: JacocoReport) {
-    executionData fileTree(project.rootDir.absolutePath).include("**/build/jacoco/*.exec")
-
-    subprojects.each {
-        sourceSets it.sourceSets.main
-    }
-
-    reports {
-        xml.enabled true
-        xml.destination file("${buildDir}/reports/jacoco/report.xml")
-        html.enabled false
-        csv.enabled false
     }
 }
