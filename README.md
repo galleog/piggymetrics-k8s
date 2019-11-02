@@ -1,4 +1,5 @@
 [![GitHub license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/galleog/piggymetrics-k8s/blob/k8s/LICENCE)
+[![Build Status](https://travis-ci.org/galleog/piggymetrics-k8s.svg?branch=master)](https://travis-ci.org/galleog/piggymetrics-k8s)
 
 # Piggy Metrics
 
