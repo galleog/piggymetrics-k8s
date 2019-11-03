@@ -2,16 +2,9 @@ apply plugin: 'org.springframework.boot'
 apply plugin: 'com.google.protobuf'
 apply plugin: 'com.google.cloud.tools.jib'
 apply plugin: 'nu.studer.jooq'
+apply plugin: 'io.freefair.aspectj.post-compile-weaving'
 
 description = 'notification-service'
-
-configurations {
-    ajc
-    aspects
-    compile {
-        extendsFrom aspects
-    }
-}
 
 dependencies {
     compile(
@@ -46,6 +39,10 @@ dependencies {
             'org.projectlombok:lombok'
     )
 
+    annotationProcessor(
+            'org.projectlombok:lombok'
+    )
+
     testCompile(
             'org.springframework.boot:spring-boot-starter-test',
             'org.springframework.cloud:spring-cloud-stream-test-support',
@@ -65,15 +62,15 @@ dependencies {
             'org.projectlombok:lombok'
     )
 
+    testAnnotationProcessor(
+            'org.projectlombok:lombok'
+    )
+
     testRuntimeOnly(
             'org.junit.jupiter:junit-jupiter-engine'
     )
 
-    ajc(
-            "org.aspectj:aspectjtools"
-    )
-
-    aspects(
+    aspect(
             "org.springframework:spring-aspects"
     )
 
@@ -85,13 +82,8 @@ dependencies {
     )
 }
 
-compileJava {
-    doLast {
-        aspectj project.sourceSets.main.output.classesDir.absolutePath,
-                configurations.aspects.asPath,
-                project.sourceSets.main.output.classesDir.absolutePath,
-                configurations.compile.asPath
-    }
+aspectj {
+    version = "${ver.aspectj}"
 }
 
 protobuf {

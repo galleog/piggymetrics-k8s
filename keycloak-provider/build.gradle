@@ -36,6 +36,10 @@ dependencies {
             'org.keycloak:keycloak-server-spi-private'
     )
 
+    annotationProcessor(
+            'org.projectlombok:lombok'
+    )
+
     testImplementation(
             'org.assertj:assertj-core',
             'org.junit.jupiter:junit-jupiter-api',

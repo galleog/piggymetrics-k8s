@@ -17,8 +17,12 @@ dependencies {
             'org.apache.commons:commons-lang3',
             'com.google.guava:guava'
     )
-    
+
     compileOnly(
+            'org.projectlombok:lombok'
+    )
+
+    annotationProcessor(
             'org.projectlombok:lombok'
     )
 
@@ -29,6 +33,10 @@ dependencies {
     )
 
     testCompileOnly(
+            'org.projectlombok:lombok'
+    )
+
+    testAnnotationProcessor(
             'org.projectlombok:lombok'
     )
 

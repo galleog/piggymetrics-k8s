@@ -27,6 +27,10 @@ dependencies {
             'org.projectlombok:lombok'
     )
 
+    annotationProcessor(
+            'org.projectlombok:lombok'
+    )
+
     testImplementation(
             'org.assertj:assertj-core',
             'ch.qos.logback:logback-classic',
