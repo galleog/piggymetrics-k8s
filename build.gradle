@@ -51,14 +51,23 @@ ext {
     ]
 }
 
-subprojects {
+allprojects {
     apply plugin: 'java'
+    apply plugin: 'jacoco'
     apply plugin: 'idea'
-    apply plugin: 'io.spring.dependency-management'
-    apply plugin: 'io.freefair.lombok'
 
     group = 'com.github.galleog.piggymetrics'
     version = '1.0-SNAPSHOT'
+
+    repositories {
+        jcenter()
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'io.freefair.lombok'
 
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
@@ -66,11 +75,6 @@ subprojects {
     tasks.withType(JavaCompile) {
         options.encoding = 'UTF-8'
         options.compilerArgs = ['-Xlint:none']
-    }
-
-    repositories {
-        jcenter()
-        mavenCentral()
     }
 
     dependencyManagement {
@@ -122,5 +126,26 @@ subprojects {
 
     test {
         useJUnitPlatform()
+    }
+}
+
+task aggregateJacocoReport(type: JacocoReport) {
+    dependsOn {
+        subprojects*.test
+    }
+
+    executionData fileTree(project.rootDir.absolutePath).include("**/build/jacoco/*.exec")
+
+    subprojects.each { subproject ->
+        classDirectories.from(subproject.sourceSets.main.output.collect {
+            fileTree(dir: it, excludes: ['**/grpc/**', '**/liquibase/tc/**'])
+        })
+    }
+
+    reports {
+        xml.enabled true
+        xml.destination file("${buildDir}/reports/jacoco/report.xml")
+        html.enabled false
+        csv.enabled false
     }
 }

@@ -17,6 +17,7 @@ before_script:
 
 script:
   - ./gradlew check
+  - ./gradlew aggregateJacocoReport
 
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
@@ -27,6 +28,7 @@ cache:
     - $HOME/.gradle/wrapper/
 
 after_success:
+  - bash <(curl -s https://codecov.io/bash)
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
 
   #TAG

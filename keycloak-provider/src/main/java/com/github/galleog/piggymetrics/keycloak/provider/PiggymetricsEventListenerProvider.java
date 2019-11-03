@@ -1,6 +1,6 @@
 package com.github.galleog.piggymetrics.keycloak.provider;
 
-import com.github.galleog.piggymetrics.auth.grpc.UserCreatedEventOuterClass.UserCreatedEvent;
+import com.github.galleog.piggymetrics.auth.grpc.UserCreatedEventProto.UserCreatedEvent;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;

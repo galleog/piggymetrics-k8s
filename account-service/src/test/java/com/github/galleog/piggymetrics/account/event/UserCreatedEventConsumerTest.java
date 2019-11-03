@@ -12,7 +12,7 @@ import com.github.galleog.piggymetrics.account.config.ReactorTestConfig;
 import com.github.galleog.piggymetrics.account.domain.Account;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
-import com.github.galleog.piggymetrics.auth.grpc.UserCreatedEventOuterClass.UserCreatedEvent;
+import com.github.galleog.piggymetrics.auth.grpc.UserCreatedEventProto.UserCreatedEvent;
 import net.devh.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration;
 import org.javamoney.moneta.Money;
 import org.junit.jupiter.api.Test;
