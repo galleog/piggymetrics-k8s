@@ -13,12 +13,4 @@ dependencies {
     implementation(
             'org.liquibase:liquibase-core'
     )
-
-    compileOnly(
-            'org.projectlombok:lombok'
-    )
-
-    annotationProcessor(
-            'org.projectlombok:lombok'
-    )
 }

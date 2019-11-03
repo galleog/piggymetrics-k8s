@@ -29,15 +29,10 @@ dependencies {
     }
 
     compileOnly(
-            'org.projectlombok:lombok',
             'org.jboss.logging:jboss-logging',
             'org.keycloak:keycloak-core',
             'org.keycloak:keycloak-server-spi',
             'org.keycloak:keycloak-server-spi-private'
-    )
-
-    annotationProcessor(
-            'org.projectlombok:lombok'
     )
 
     testImplementation(

@@ -1,6 +1,7 @@
 # Intellij
 .idea/
 *.iml
+out/
 
 # Mac
 .DS_Store
@@ -11,3 +12,6 @@ build/
 
 # Java
 .resourceCache/
+
+# Helm
+requirements.lock

@@ -25,14 +25,6 @@ dependencies {
             'org.slf4j:jul-to-slf4j'
     )
 
-    compileOnly(
-            'org.projectlombok:lombok'
-    )
-
-    annotationProcessor(
-            'org.projectlombok:lombok'
-    )
-
     testCompile(
             'org.springframework.boot:spring-boot-starter-test',
             'org.springframework.security:spring-security-test',

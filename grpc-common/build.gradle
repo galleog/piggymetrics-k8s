@@ -22,14 +22,6 @@ dependencies {
             'org.slf4j:slf4j-api',
             'org.slf4j:jul-to-slf4j'
     )
-    
-    compileOnly(
-            'org.projectlombok:lombok'
-    )
-
-    annotationProcessor(
-            'org.projectlombok:lombok'
-    )
 
     testImplementation(
             'org.assertj:assertj-core',

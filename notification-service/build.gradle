@@ -35,14 +35,6 @@ dependencies {
         exclude module: 'commons-logging'
     }
 
-    compileOnly(
-            'org.projectlombok:lombok'
-    )
-
-    annotationProcessor(
-            'org.projectlombok:lombok'
-    )
-
     testCompile(
             'org.springframework.boot:spring-boot-starter-test',
             'org.springframework.cloud:spring-cloud-stream-test-support',
@@ -56,14 +48,6 @@ dependencies {
             'org.junit.jupiter:junit-jupiter-api',
             'commons-io:commons-io',
             'org.simplejavamail:simple-java-mail'
-    )
-
-    testCompileOnly(
-            'org.projectlombok:lombok'
-    )
-
-    testAnnotationProcessor(
-            'org.projectlombok:lombok'
     )
 
     testRuntimeOnly(

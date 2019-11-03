@@ -11,6 +11,7 @@ plugins {
     id 'nu.studer.jooq' version '3.0.3' apply false
     id 'com.github.johnrengelman.shadow' version '4.0.4' apply false
     id 'io.freefair.aspectj.post-compile-weaving' version '4.1.3' apply false
+    id 'io.freefair.lombok' version '4.1.3' apply false
 }
 
 ext {
@@ -19,7 +20,7 @@ ext {
             dbsetup                  : '2.1.0',
             moneta                   : '1.3',
             jacksonDatatypeMoney     : '1.1.1',
-            lombok                   : '1.18.8',
+            lombok                   : '1.18.10',
             guava                    : '28.0-jre',
             assertjDb                : '1.2.0',
             commonsValidator         : '1.6',
@@ -54,6 +55,7 @@ subprojects {
     apply plugin: 'java'
     apply plugin: 'idea'
     apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'io.freefair.lombok'
 
     group = 'com.github.galleog.piggymetrics'
     version = '1.0-SNAPSHOT'
@@ -69,7 +71,6 @@ subprojects {
     repositories {
         jcenter()
         mavenCentral()
-        maven { url "https://repo.spring.io/milestone" }
     }
 
     dependencyManagement {
@@ -98,7 +99,6 @@ subprojects {
             dependency "net.javacrumbs.shedlock:shedlock-spring:${ver.shedlock}"
             dependency "net.javacrumbs.shedlock:shedlock-provider-jdbc-template:${ver.shedlock}"
             dependency "org.simplejavamail:simple-java-mail:${ver.simpleJavaMail}"
-            dependency "org.projectlombok:lombok:${ver.lombok}"
             dependency "org.testcontainers:postgresql:${ver.testcontainers}"
             dependency "org.testcontainers:kafka:${ver.testcontainers}"
             dependency "org.testcontainers:junit-jupiter:${ver.testcontainers}"
@@ -113,6 +113,12 @@ subprojects {
             dependency "com.github.daniel-shuy:kafka-protobuf-serde:${ver.kafkaProtobuf}"
         }
     }
+
+    lombok {
+        version = "${ver.lombok}"
+    }
+    generateLombokConfig.enabled = false
+
 
     test {
         useJUnitPlatform()
