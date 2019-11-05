@@ -33,7 +33,10 @@ kafka:
 
 keycloak:
   enabled: true
-
+  init:
+    image:
+      repository: galleog/piggymetrics-keycloak-provider
+      tag: latest
   keycloak:
     service:
       type: NodePort
@@ -67,7 +70,7 @@ keycloak:
         value: {{ .Values.global.kafka.topic.userEvents }}
 
     extraInitContainers: |
-      - name: wait-for-postgres-and-kafka
+      - name: event-provider
         image: "{{ .Values.init.image.repository }}:{{ .Values.init.image.tag }}"
         imagePullPolicy: {{ .Values.init.image.pullPolicy }}
         command:
@@ -79,6 +82,7 @@ keycloak:
                 sleep 2;
             done;
             echo 'PostgreSQL & Kafka OK ✓'
+            cp /app/keycloak-provider.jar /providers
         env:
           - name: DATABASE_HOST
             valueFrom:
@@ -92,15 +96,6 @@ keycloak:
                 key: kafka-brokers
         resources:
           {{- toYaml .Values.init.resources | nindent 12 }}
-      - name: event-provider
-        image: {{ .Values.global.keycloak.provider.image | quote }}
-        imagePullPolicy: {{ .Values.global.keycloak.provider.imagePullPolicy }}
-        command:
-          - sh
-          - -c
-          - |
-            echo "Copying event provider"
-            cp /app/keycloak-provider.jar /providers
         volumeMounts:
           - name: provider
             mountPath: /providers

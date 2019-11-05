@@ -1,4 +1,4 @@
-FROM alpine:3.10
+FROM busybox:1.31
 
 MAINTAINER Oleg Galkin <ogalleg@gmail.com>
 
