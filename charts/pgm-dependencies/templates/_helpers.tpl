@@ -58,10 +58,11 @@ Call a nested template.
 Create a list of kafka URLs.
 */}}
 {{- define "pgm-dependencies.kafka.brokers" -}}
+{{- $count := .Values.kafka.replicaCount | toString | int -}}
 {{- $name := include "call-nested" (list . "kafka" "kafka.fullname") -}}
-{{- range $index, $e := until (.Values.kafka.replicaCount | int) -}}
-{{- printf "%s-%d.%s-headless.%s.svc.cluster.local:%d" $name $index $name $.Release.Namespace ($.Values.kafka.service.port | int) -}}
-{{- if lt $index  (sub ($.Values.kafka.replicaCount | int) 1) -}}
+{{- range $index, $e := until $count -}}
+{{- printf "%s-%d.%s-headless.%s.svc.cluster.local:%s" $name $index $name $.Release.Namespace $.Values.kafka.service.port -}}
+{{- if lt $index (sub $count 1) -}}
 {{- printf "," -}}
 {{- end -}}
 {{- end -}}
