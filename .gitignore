@@ -14,4 +14,5 @@ build/
 .resourceCache/
 
 # Helm
-requirements.lock
+charts/piggymetrics/requirements.lock
+charts/piggymetrics/charts/
