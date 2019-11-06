@@ -16,17 +16,15 @@ pgm-frontend:
 
 api-gateway:
   enabled: true
-  debug:
-    enabled: true
 
 account-service:
   enabled: true
 
 notification-service:
-  enabled: false
+  enabled: true
 
 statistics-service:
-  enabled: false
+  enabled: true
 
 serviceAccount:
   create: true

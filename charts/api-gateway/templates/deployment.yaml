@@ -53,17 +53,17 @@ spec:
               path: /actuator/health
               port: http
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-              periodSeconds: {{ default 10 .Values.livenessProbe.periodSeconds }}
-              timeoutSeconds: {{ default 1 .Values.livenessProbe.timeoutSeconds }}
-              failureThreshold: {{ default 3 .Values.livenessProbe.failureThreshold }}
+            periodSeconds: {{ default 10 .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ default 1 .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3 .Values.livenessProbe.failureThreshold }}
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: http
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
-              periodSeconds: {{ default 10 .Values.readinessProbe.periodSeconds }}
-              timeoutSeconds: {{ default 1 .Values.readinessProbe.timeoutSeconds }}
-              failureThreshold: {{ default 3 .Values.readinessProbe.failureThreshold }}
+            periodSeconds: {{ default 10 .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ default 1 .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3 .Values.readinessProbe.failureThreshold }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
