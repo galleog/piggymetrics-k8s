@@ -16,7 +16,7 @@ plugins {
 
 ext {
     ver = [
-            springCloud              : 'Greenwich.SR3',
+            springCloud              : 'Greenwich.SR4',
             dbsetup                  : '2.1.0',
             moneta                   : '1.3',
             jacksonDatatypeMoney     : '1.1.1',
