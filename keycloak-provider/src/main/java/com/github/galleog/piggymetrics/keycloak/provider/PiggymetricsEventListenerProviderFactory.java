@@ -1,7 +1,7 @@
 package com.github.galleog.piggymetrics.keycloak.provider;
 
 import com.github.daniel.shuy.kafka.protobuf.serde.KafkaProtobufSerializer;
-import com.github.galleog.piggymetrics.auth.grpc.UserCreatedEventProto.UserCreatedEvent;
+import com.github.galleog.piggymetrics.auth.grpc.UserRegisteredEventProto.UserRegisteredEvent;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -23,7 +23,7 @@ public class PiggymetricsEventListenerProviderFactory implements EventListenerPr
     private static final String KAFKA_BROKERS = System.getenv("KAFKA_BROKERS");
     private static final String USER_EVENTS_TOPIC = System.getenv("USER_EVENTS_TOPIC");
 
-    private Producer<String, UserCreatedEvent> producer;
+    private Producer<String, UserRegisteredEvent> producer;
 
     @Override
     public EventListenerProvider create(KeycloakSession session) {

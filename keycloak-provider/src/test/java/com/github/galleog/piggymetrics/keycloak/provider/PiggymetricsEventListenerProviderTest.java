@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import com.github.galleog.piggymetrics.auth.grpc.UserCreatedEventProto.UserCreatedEvent;
+import com.github.galleog.piggymetrics.auth.grpc.UserRegisteredEventProto.UserRegisteredEvent;
 import com.google.common.collect.ImmutableMap;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
@@ -35,9 +35,9 @@ class PiggymetricsEventListenerProviderTest {
     private static final String TOPIC = "test-topic";
 
     @Mock
-    private Producer<String, UserCreatedEvent> producer;
+    private Producer<String, UserRegisteredEvent> producer;
     @Captor
-    private ArgumentCaptor<ProducerRecord<String, UserCreatedEvent>> captor;
+    private ArgumentCaptor<ProducerRecord<String, UserRegisteredEvent>> captor;
     private PiggymetricsEventListenerProvider provider;
 
     @BeforeEach
@@ -58,7 +58,7 @@ class PiggymetricsEventListenerProviderTest {
         event.setDetails(ImmutableMap.of(USERNAME_KEY, USERNAME, EMAIL_KEY, EMAIL));
         provider.onEvent(event);
 
-        ProducerRecord<String, UserCreatedEvent> record = captor.getValue();
+        ProducerRecord<String, UserRegisteredEvent> record = captor.getValue();
         assertThat(record.topic()).isEqualTo(TOPIC);
         assertThat(record.key()).isEqualTo(USER_ID);
         assertThat(record.value().getUserId()).isEqualTo(USER_ID);

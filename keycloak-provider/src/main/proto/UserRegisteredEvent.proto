@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package piggymetrics.auth;
+
+option java_package = "com.github.galleog.piggymetrics.auth.grpc";
+option java_outer_classname = "UserRegisteredEventProto";
+
+// Event sent when a user is registered.
+message UserRegisteredEvent {
+    // Required. Identifier of the registered user.
+    string user_id = 1;
+    // Required. Name of the registered user.
+    string user_name = 2;
+    // Required. User email.
+    string email = 3;
+}

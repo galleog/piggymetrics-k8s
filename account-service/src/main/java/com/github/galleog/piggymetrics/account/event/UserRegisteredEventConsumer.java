@@ -3,7 +3,7 @@ package com.github.galleog.piggymetrics.account.event;
 import com.github.galleog.piggymetrics.account.domain.Account;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
-import com.github.galleog.piggymetrics.auth.grpc.UserCreatedEventProto.UserCreatedEvent;
+import com.github.galleog.piggymetrics.auth.grpc.UserRegisteredEventProto.UserRegisteredEvent;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ import java.math.BigDecimal;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class UserCreatedEventConsumer {
+public class UserRegisteredEventConsumer {
     @VisibleForTesting
     public static final CurrencyUnit BASE_CURRENCY = Monetary.getCurrency("USD");
 
@@ -31,7 +31,7 @@ public class UserCreatedEventConsumer {
 
     @Transactional
     @StreamListener(Sink.INPUT)
-    public void createAccount(UserCreatedEvent event) {
+    public void createAccount(UserRegisteredEvent event) {
         logger.info("UserCreated event for user '{}' received", event.getUserName());
 
         if (accountRepository.getByName(event.getUserName()).isPresent()) {

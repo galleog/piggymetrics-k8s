@@ -7,7 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.github.galleog.piggymetrics.auth.UserCreatedEventOuterClass.UserCreatedEvent;
+import com.github.galleog.piggymetrics.auth.grpc.UserRegisteredEventProto.UserRegisteredEvent;
 import com.github.galleog.piggymetrics.notification.domain.Frequency;
 import com.github.galleog.piggymetrics.notification.domain.NotificationSettings;
 import com.github.galleog.piggymetrics.notification.domain.NotificationType;
@@ -30,15 +30,15 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Tests for {@link UserCreatedEventConsumer}.
+ * Tests for {@link UserRegisteredEventConsumer}.
  */
 @SpringBootTest
 @ActiveProfiles("test")
 @ExtendWith({SpringExtension.class, MockitoExtension.class})
-class UserCreatedEventConsumerTest {
+class UserRegisteredEventConsumerTest {
     private static final String USERNAME = "test";
     private static final String EMAIL = "test@example.com";
-    private static final UserCreatedEvent EVENT = UserCreatedEvent.newBuilder()
+    private static final UserRegisteredEvent EVENT = UserRegisteredEvent.newBuilder()
             .setUserId(UUID.randomUUID().toString())
             .setUserName(USERNAME)
             .setEmail(EMAIL)
@@ -52,7 +52,7 @@ class UserCreatedEventConsumerTest {
     private ArgumentCaptor<Recipient> recipientCaptor;
 
     /**
-     * Test for {@link UserCreatedEventConsumer#createRemindNotification(UserCreatedEvent)}.
+     * Test for {@link UserRegisteredEventConsumer#createRemindNotification(UserRegisteredEvent)}.
      */
     @Test
     void shouldCreateRemindNotification() {
@@ -70,7 +70,7 @@ class UserCreatedEventConsumerTest {
     }
 
     /**
-     * Test for {@link UserCreatedEventConsumer#createRemindNotification(UserCreatedEvent)}
+     * Test for {@link UserRegisteredEventConsumer#createRemindNotification(UserRegisteredEvent)}
      * when notification settings for the same recipient already exist.
      */
     @Test

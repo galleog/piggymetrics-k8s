@@ -1,6 +1,6 @@
 package com.github.galleog.piggymetrics.keycloak.provider;
 
-import com.github.galleog.piggymetrics.auth.grpc.UserCreatedEventProto.UserCreatedEvent;
+import com.github.galleog.piggymetrics.auth.grpc.UserRegisteredEventProto.UserRegisteredEvent;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +13,7 @@ import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
 
 /**
- * Event listener that sends a {@link UserCreatedEvent} when a new user is registered.
+ * Event listener that sends a {@link UserRegisteredEvent} when a new user is registered.
  */
 @RequiredArgsConstructor
 public class PiggymetricsEventListenerProvider implements EventListenerProvider {
@@ -27,17 +27,17 @@ public class PiggymetricsEventListenerProvider implements EventListenerProvider 
     @NonNull
     private final String topic;
     @NonNull
-    private final Producer<String, UserCreatedEvent> producer;
+    private final Producer<String, UserRegisteredEvent> producer;
 
     @Override
     public void onEvent(Event event) {
         if (EventType.REGISTER.equals(event.getType())) {
-            UserCreatedEvent uce = UserCreatedEvent.newBuilder()
+            UserRegisteredEvent uce = UserRegisteredEvent.newBuilder()
                     .setUserId(event.getUserId())
                     .setUserName(event.getDetails().get(USERNAME_KEY))
                     .setEmail(event.getDetails().get(EMAIL_KEY))
                     .build();
-            ProducerRecord<String, UserCreatedEvent> record = new ProducerRecord<>(topic, event.getUserId(), uce);
+            ProducerRecord<String, UserRegisteredEvent> record = new ProducerRecord<>(topic, event.getUserId(), uce);
             producer.send(record, ((metadata, exception) -> {
                 if (metadata != null) {
                     logger.info("Message on registration of user '" + record.key() + "' sent");

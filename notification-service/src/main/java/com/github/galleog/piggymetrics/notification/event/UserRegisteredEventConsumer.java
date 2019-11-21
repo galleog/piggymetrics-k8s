@@ -1,6 +1,6 @@
 package com.github.galleog.piggymetrics.notification.event;
 
-import com.github.galleog.piggymetrics.auth.UserCreatedEventOuterClass.UserCreatedEvent;
+import com.github.galleog.piggymetrics.auth.grpc.UserRegisteredEventProto.UserRegisteredEvent;
 import com.github.galleog.piggymetrics.notification.domain.Frequency;
 import com.github.galleog.piggymetrics.notification.domain.NotificationSettings;
 import com.github.galleog.piggymetrics.notification.domain.NotificationType;
@@ -19,12 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class UserCreatedEventConsumer {
+public class UserRegisteredEventConsumer {
     private final RecipientRepository recipientRepository;
 
     @Transactional
     @StreamListener(Sink.INPUT)
-    public void createRemindNotification(UserCreatedEvent event) {
+    public void createRemindNotification(UserRegisteredEvent event) {
         logger.info("UserCreated event for user '{}' received", event.getUserName());
 
         if (recipientRepository.getByUsername(event.getUserName()).isPresent()) {

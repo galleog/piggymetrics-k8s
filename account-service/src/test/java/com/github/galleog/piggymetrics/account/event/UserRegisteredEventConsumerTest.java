@@ -1,6 +1,6 @@
 package com.github.galleog.piggymetrics.account.event;
 
-import static com.github.galleog.piggymetrics.account.event.UserCreatedEventConsumer.BASE_CURRENCY;
+import static com.github.galleog.piggymetrics.account.event.UserRegisteredEventConsumer.BASE_CURRENCY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -12,7 +12,7 @@ import com.github.galleog.piggymetrics.account.config.ReactorTestConfig;
 import com.github.galleog.piggymetrics.account.domain.Account;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
-import com.github.galleog.piggymetrics.auth.grpc.UserCreatedEventProto.UserCreatedEvent;
+import com.github.galleog.piggymetrics.auth.grpc.UserRegisteredEventProto.UserRegisteredEvent;
 import net.devh.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration;
 import org.javamoney.moneta.Money;
 import org.junit.jupiter.api.Test;
@@ -39,14 +39,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Tests for {@link UserCreatedEventConsumer}.
+ * Tests for {@link UserRegisteredEventConsumer}.
  */
 @ActiveProfiles("test")
 @ExtendWith({SpringExtension.class, MockitoExtension.class})
-@SpringBootTest(classes = {AccountApplication.class, UserCreatedEventConsumerTest.Config.class})
-class UserCreatedEventConsumerTest {
+@SpringBootTest(classes = {AccountApplication.class, UserRegisteredEventConsumerTest.Config.class})
+class UserRegisteredEventConsumerTest {
     private static final String USERNAME = "test";
-    private static final UserCreatedEvent EVENT = UserCreatedEvent.newBuilder()
+    private static final UserRegisteredEvent EVENT = UserRegisteredEvent.newBuilder()
             .setUserId(UUID.randomUUID().toString())
             .setUserName(USERNAME)
             .setEmail("test@example.com")
@@ -60,7 +60,7 @@ class UserCreatedEventConsumerTest {
     private ArgumentCaptor<Account> accountCaptor;
 
     /**
-     * Test for {@link UserCreatedEventConsumer#createAccount(UserCreatedEvent)}.
+     * Test for {@link UserRegisteredEventConsumer#createAccount(UserRegisteredEvent)}.
      */
     @Test
     void shouldCreateAccount() {
@@ -78,7 +78,7 @@ class UserCreatedEventConsumerTest {
     }
 
     /**
-     * Test for {@link UserCreatedEventConsumer#createAccount(UserCreatedEvent)}
+     * Test for {@link UserRegisteredEventConsumer#createAccount(UserRegisteredEvent)}
      * when an account with the same name already exists.
      */
     @Test
