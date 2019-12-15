@@ -1,6 +1,6 @@
 buildscript {
     dependencies {
-        classpath 'org.testcontainers:postgresql:1.12.0'
+        classpath 'org.testcontainers:postgresql:1.12.4'
     }
 }
 
@@ -29,7 +29,7 @@ ext {
             commonsIo                : '2.6',
             shedlock                 : '2.5.0',
             simpleJavaMail           : '5.0.3',
-            testcontainers           : '1.12.0',
+            testcontainers           : '1.12.4',
             postgresql               : '42.2.5',
             grpc                     : '1.22.2',
             reactiveGrpc             : '1.0.0',
