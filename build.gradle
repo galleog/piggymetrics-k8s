@@ -84,15 +84,11 @@ subprojects {
             mavenBom "org.springframework.cloud:spring-cloud-dependencies:${ver.springCloud}"
             mavenBom "org.keycloak.bom:keycloak-spi-bom:${ver.keycloak}"
             mavenBom "org.junit:junit-bom:${ver.junit}"
+            mavenBom "io.grpc:grpc-bom:${ver.grpc}"
+            mavenBom "com.google.protobuf:protobuf-bom:${ver.protobuf}"
         }
 
         dependencies {
-            dependency "io.grpc:grpc-protobuf:${ver.grpc}"
-            dependency "io.grpc:grpc-stub:${ver.grpc}"
-            dependency "io.grpc:grpc-services:${ver.grpc}"
-            dependency "io.grpc:grpc-testing:${ver.grpc}"
-            dependency "com.google.protobuf:protobuf-java:${ver.protobuf}"
-            dependency "com.google.protobuf:protobuf-java-util:${ver.protobuf}"
             dependency "com.salesforce.servicelibs:reactor-grpc-stub:${ver.reactiveGrpc}"
             dependency "com.ninja-squad:DbSetup:${ver.dbsetup}"
             dependency "org.javamoney:moneta:${ver.moneta}"
