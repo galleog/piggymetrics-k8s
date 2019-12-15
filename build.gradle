@@ -6,6 +6,7 @@ buildscript {
 
 plugins {
     id 'org.springframework.boot' version '2.1.9.RELEASE' apply false
+    id 'io.spring.dependency-management' version '1.0.8.RELEASE' apply false
     id 'com.google.protobuf' version '0.8.10' apply false
     id 'com.google.cloud.tools.jib' version '1.5.1' apply false
     id 'nu.studer.jooq' version '3.0.3' apply false

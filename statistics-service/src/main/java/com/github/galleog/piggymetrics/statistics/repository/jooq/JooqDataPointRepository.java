@@ -100,13 +100,12 @@ public class JooqDataPointRepository implements DataPointRepository {
                 .where(DATA_POINTS.ACCOUNT_NAME.eq(accountName))
                 .orderBy(DATA_POINTS.DATA_POINT_DATE)
                 .fetchLazy();
-        return StreamSupport.stream(
-                Spliterators.spliteratorUnknownSize(
-                        new DataPointIterator(cursor),
-                        Spliterator.DISTINCT | Spliterator.ORDERED | Spliterator.NONNULL
-                ),
-                false
-        ).onClose(cursor::close);
+        Spliterator<DataPoint> spliterator = Spliterators.spliteratorUnknownSize(
+                new DataPointIterator(cursor),
+                Spliterator.DISTINCT | Spliterator.NONNULL | Spliterator.IMMUTABLE
+        );
+        return StreamSupport.stream(spliterator,false)
+                .onClose(cursor::close);
     }
 
     @Override
