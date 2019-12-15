@@ -101,6 +101,8 @@ jib {
 }
 
 jooq {
+    version = ver.jooq
+
     domain(sourceSets.main) {
         jdbc {
             driver = database.driver

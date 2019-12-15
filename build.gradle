@@ -31,9 +31,9 @@ ext {
             simpleJavaMail           : '5.0.3',
             testcontainers           : '1.12.4',
             postgresql               : '42.2.5',
-            grpc                     : '1.22.2',
+            grpc                     : '1.25.0',
             reactiveGrpc             : '1.0.0',
-            protobuf                 : '3.9.1',
+            protobuf                 : '3.11.1',
             grpcSpringBoot           : '2.5.1.RELEASE',
             protobufSpringCloudStream: '0.0.2',
             kafka                    : '2.2.1',
@@ -41,7 +41,8 @@ ext {
             keycloak                 : '6.0.1',
             kafkaProtobuf            : '2.2.0',
             slf4jJbossLogging        : '1.2.0.Final',
-            aspectj                  : '1.9.4'
+            aspectj                  : '1.9.4',
+            jooq                     : '3.11.12'
     ]
 
     database = [
@@ -70,8 +71,8 @@ subprojects {
     apply plugin: 'io.spring.dependency-management'
     apply plugin: 'io.freefair.lombok'
 
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 
     tasks.withType(JavaCompile) {
         options.encoding = 'UTF-8'
