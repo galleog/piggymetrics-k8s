@@ -34,7 +34,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import javax.sql.DataSource;
 import java.time.LocalDate;
@@ -48,7 +47,6 @@ import java.util.Optional;
  * Tests for {@link JooqRecipientRepository}.
  */
 @JooqTest
-@Testcontainers
 @ActiveProfiles("test")
 @Import(JooqConfig.class)
 class JooqRecipientRepositoryTest {

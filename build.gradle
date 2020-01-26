@@ -1,6 +1,6 @@
 buildscript {
     dependencies {
-        classpath 'org.testcontainers:postgresql:1.12.4'
+        classpath 'org.testcontainers:postgresql:1.12.5'
     }
 }
 
@@ -29,7 +29,7 @@ ext {
             commonsIo                : '2.6',
             shedlock                 : '2.5.0',
             simpleJavaMail           : '5.0.3',
-            testcontainers           : '1.12.4',
+            testcontainers           : '1.12.5',
             postgresql               : '42.2.5',
             grpc                     : '1.25.0',
             reactiveGrpc             : '1.0.0',
@@ -47,7 +47,7 @@ ext {
 
     database = [
             driver  : 'org.testcontainers.jdbc.ContainerDatabaseDriver',
-            url     : 'jdbc:tc:postgresql:11.5-alpine://localhost/databasename?TC_INITFUNCTION=com.github.galleog.liquibase.tc.LiquibaseUpdater::update',
+            url     : 'jdbc:tc:postgresql:11.5-alpine:///databasename?TC_INITFUNCTION=com.github.galleog.liquibase.tc.LiquibaseUpdater::update',
             username: 'test',
             password: 'test'
     ]
@@ -102,8 +102,6 @@ subprojects {
             dependency "net.javacrumbs.shedlock:shedlock-provider-jdbc-template:${ver.shedlock}"
             dependency "org.simplejavamail:simple-java-mail:${ver.simpleJavaMail}"
             dependency "org.testcontainers:postgresql:${ver.testcontainers}"
-            dependency "org.testcontainers:kafka:${ver.testcontainers}"
-            dependency "org.testcontainers:junit-jupiter:${ver.testcontainers}"
             dependency "org.postgresql:postgresql:${ver.postgresql}"
             dependency "net.devh:grpc-server-spring-boot-starter:${ver.grpcSpringBoot}"
             dependency "net.devh:grpc-client-spring-boot-starter:${ver.grpcSpringBoot}"

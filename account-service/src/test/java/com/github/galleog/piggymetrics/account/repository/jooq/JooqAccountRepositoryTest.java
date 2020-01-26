@@ -19,6 +19,7 @@ import com.github.galleog.piggymetrics.account.domain.Account;
 import com.github.galleog.piggymetrics.account.domain.Item;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
+import com.google.common.collect.ImmutableList;
 import com.ninja_squad.dbsetup.DbSetup;
 import com.ninja_squad.dbsetup.DbSetupTracker;
 import com.ninja_squad.dbsetup.destination.DataSourceDestination;
@@ -37,8 +38,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -50,7 +49,6 @@ import java.util.Optional;
  * Tests for {@link JooqAccountRepository}.
  */
 @JooqTest
-@Testcontainers
 @ActiveProfiles("test")
 @Import(JooqConfig.class)
 class JooqAccountRepositoryTest {

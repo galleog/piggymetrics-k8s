@@ -36,7 +36,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -52,7 +51,6 @@ import java.util.stream.Stream;
  * Tests for {@link JooqDataPointRepository}.
  */
 @JooqTest
-@Testcontainers
 @ActiveProfiles("test")
 @Import(JooqConfig.class)
 class JooqDataPointRepositoryTest {

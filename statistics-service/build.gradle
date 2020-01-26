@@ -33,7 +33,6 @@ dependencies {
             'org.springframework.cloud:spring-cloud-stream-test-support',
             'io.projectreactor:reactor-test',
             'org.testcontainers:postgresql',
-            'org.testcontainers:junit-jupiter',
             'com.ninja-squad:DbSetup',
             'org.assertj:assertj-db',
             'org.mockito:mockito-junit-jupiter',
