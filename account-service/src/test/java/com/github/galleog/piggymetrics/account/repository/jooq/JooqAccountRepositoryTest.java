@@ -35,9 +35,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jooq.JooqTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -79,20 +76,14 @@ class JooqAccountRepositoryTest {
     @Autowired
     private DataSource dataSource;
     @Autowired
-    private PlatformTransactionManager transactionManager;
-    @Autowired
     private DSLContext dsl;
 
     private AccountRepository repository;
-    private TransactionTemplate transactionTemplate;
     private DataSourceDestination destination;
 
     @BeforeEach
     void setUp() {
         repository = new JooqAccountRepository(dsl);
-
-        transactionTemplate = new TransactionTemplate(transactionManager);
-        transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 
         destination = DataSourceDestination.with(dataSource);
     }
@@ -297,7 +288,7 @@ class JooqAccountRepositoryTest {
             Item income = stubIncome();
             Item expense = stubExpense();
             Account account = stubAccount(ImmutableList.of(income, expense));
-            Account saved = transactionTemplate.execute(status -> repository.save(account));
+            Account saved = repository.save(account);
 
             Table accounts = new Table(dataSource, ACCOUNTS.getName());
             Assertions.assertThat(accounts)
@@ -420,7 +411,7 @@ class JooqAccountRepositoryTest {
             Item income = stubIncome();
             Item expense = stubExpense();
             Account account = stubAccount(ImmutableList.of(income, expense));
-            Account updated = transactionTemplate.execute(status -> repository.update(account).get());
+            Account updated = repository.update(account).get();
 
             Table accounts = new Table(dataSource, ACCOUNTS.getName());
             Assertions.assertThat(accounts)
@@ -473,7 +464,7 @@ class JooqAccountRepositoryTest {
             DB_SETUP_TRACKER.skipNextLaunch();
 
             Account account = stubAccount(ImmutableList.of());
-            Account updated = transactionTemplate.execute(status -> repository.update(account).get());
+            Account updated = repository.update(account).get();
 
             Table accounts = new Table(dataSource, ACCOUNTS.getName());
             Assertions.assertThat(accounts)

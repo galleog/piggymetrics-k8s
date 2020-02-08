@@ -33,9 +33,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jooq.JooqTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -76,20 +73,14 @@ class JooqDataPointRepositoryTest {
     @Autowired
     private DataSource dataSource;
     @Autowired
-    private PlatformTransactionManager transactionManager;
-    @Autowired
     private DSLContext dsl;
 
     private DataPointRepository repository;
-    private TransactionTemplate transactionTemplate;
     private DataSourceDestination destination;
 
     @BeforeEach
     void setUp() {
         repository = new JooqDataPointRepository(dsl);
-
-        transactionTemplate = new TransactionTemplate(transactionManager);
-        transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 
         destination = DataSourceDestination.with(dataSource);
     }
@@ -315,7 +306,7 @@ class JooqDataPointRepositoryTest {
                     .statistic(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
                     .build();
 
-            DataPoint saved = transactionTemplate.execute(status -> repository.save(dataPoint));
+            DataPoint saved = repository.save(dataPoint);
 
             Table dataPoints = new Table(dataSource, DATA_POINTS.getName());
             Assertions.assertThat(dataPoints)
@@ -440,7 +431,7 @@ class JooqDataPointRepositoryTest {
                     .statistic(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
                     .build();
 
-            DataPoint updated = transactionTemplate.execute(status -> repository.update(dataPoint)).get();
+            DataPoint updated = repository.update(dataPoint).get();
 
             Table dataPoints = new Table(dataSource, DATA_POINTS.getName());
             Assertions.assertThat(dataPoints)

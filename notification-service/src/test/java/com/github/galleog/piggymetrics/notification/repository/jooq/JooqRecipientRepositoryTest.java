@@ -31,9 +31,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jooq.JooqTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
 import java.time.LocalDate;
@@ -65,20 +62,14 @@ class JooqRecipientRepositoryTest {
     @Autowired
     private DataSource dataSource;
     @Autowired
-    private PlatformTransactionManager transactionManager;
-    @Autowired
     private DSLContext dsl;
 
     private RecipientRepository repository;
-    private TransactionTemplate transactionTemplate;
     private DataSourceDestination destination;
 
     @BeforeEach
     void setUp() {
         repository = new JooqRecipientRepository(dsl);
-
-        transactionTemplate = new TransactionTemplate(transactionManager);
-        transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 
         destination = DataSourceDestination.with(dataSource);
     }
@@ -253,10 +244,7 @@ class JooqRecipientRepositoryTest {
                     .notification(BACKUP, backup)
                     .notification(REMIND, remind)
                     .build();
-            transactionTemplate.execute(status -> {
-                repository.save(recipient);
-                return null;
-            });
+            repository.save(recipient);
 
             Table recipients = new Table(dataSource, RECIPIENTS.getName());
             Assertions.assertThat(recipients)
@@ -334,7 +322,7 @@ class JooqRecipientRepositoryTest {
                     .notification(REMIND, remind)
                     .build();
 
-            Recipient updated = transactionTemplate.execute(status -> repository.update(recipient)).get();
+            Recipient updated = repository.update(recipient).get();
 
             Table recipients = new Table(dataSource, RECIPIENTS.getName());
             Assertions.assertThat(recipients)
