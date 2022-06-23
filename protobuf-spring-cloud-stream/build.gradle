@@ -1,0 +1,19 @@
+apply plugin: 'java-library'
+
+description = 'protobuf-spring-cloud-stream'
+
+jar {
+    manifest {
+        attributes(
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version
+        )
+    }
+}
+
+dependencies {
+    implementation(
+            'com.google.protobuf:protobuf-java',
+            'org.springframework.cloud:spring-cloud-stream'
+    )
+}

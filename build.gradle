@@ -1,3 +1,5 @@
+import org.springframework.boot.gradle.plugin.SpringBootPlugin
+
 buildscript {
     dependencies {
         classpath 'org.testcontainers:postgresql:1.12.5'
@@ -35,7 +37,6 @@ ext {
             reactiveGrpc             : '1.0.0',
             protobuf                 : '3.11.1',
             grpcSpringBoot           : '2.5.1.RELEASE',
-            protobufSpringCloudStream: '0.0.2',
             kafka                    : '2.2.1',
             jbossLogging             : '3.3.2.Final',
             keycloak                 : '6.0.1',
@@ -62,7 +63,6 @@ allprojects {
     version = '1.0-SNAPSHOT'
 
     repositories {
-        jcenter()
         mavenCentral()
     }
 }
@@ -81,7 +81,7 @@ subprojects {
 
     dependencyManagement {
         imports {
-            mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
+            mavenBom SpringBootPlugin.BOM_COORDINATES
             mavenBom "org.springframework.cloud:spring-cloud-dependencies:${ver.springCloud}"
             mavenBom "org.keycloak.bom:keycloak-spi-bom:${ver.keycloak}"
             mavenBom "org.junit:junit-bom:${ver.junit}"
@@ -105,7 +105,6 @@ subprojects {
             dependency "org.postgresql:postgresql:${ver.postgresql}"
             dependency "net.devh:grpc-server-spring-boot-starter:${ver.grpcSpringBoot}"
             dependency "net.devh:grpc-client-spring-boot-starter:${ver.grpcSpringBoot}"
-            dependency "io.disc99:protocol-buffers-spring-cloud-stream-starter:${ver.protobufSpringCloudStream}"
             dependency "org.apache.kafka:kafka-clients:${ver.kafka}"
             dependency "org.jboss.logging:jboss-logging:${ver.jbossLogging}"
             dependency "org.jboss.slf4j:slf4j-jboss-logging:${ver.slf4jJbossLogging}"

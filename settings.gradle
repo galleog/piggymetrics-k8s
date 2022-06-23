@@ -1,22 +1,23 @@
 pluginManagement {
     repositories {
+        gradlePluginPortal()
         maven {
             url 'https://repo.spring.io/plugins-release'
         }
-        gradlePluginPortal()
     }
 }
 
 rootProject.name = 'piggymetrics-k8s'
 
-include ':pgm-core'
-include ':grpc-common'
-include ':api-gateway'
-include ':account-service'
-include ':statistics-service'
-include ':notification-service'
+include 'pgm-core'
+include 'grpc-common'
+include 'api-gateway'
+include 'account-service'
+include 'statistics-service'
+include 'notification-service'
 include 'liquibase-tc'
 include 'keycloak-provider'
+include 'protobuf-spring-cloud-stream'
 
 project(':pgm-core').projectDir = "$rootDir/pgm-core" as File
 project(':grpc-common').projectDir = "$rootDir/grpc-common" as File
@@ -26,4 +27,5 @@ project(':statistics-service').projectDir = "$rootDir/statistics-service" as Fil
 project(':notification-service').projectDir = "$rootDir/notification-service" as File
 project(':liquibase-tc').projectDir = "$rootDir/liquibase-tc" as File
 project(':keycloak-provider').projectDir = "$rootDir/keycloak-provider" as File
+project(':protobuf-spring-cloud-stream').projectDir = "$rootDir/protobuf-spring-cloud-stream" as File
 

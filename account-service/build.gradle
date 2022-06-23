@@ -9,6 +9,7 @@ description = 'account-service'
 dependencies {
     compile(
             project(':grpc-common'),
+            project(':protobuf-spring-cloud-stream'),
             'org.springframework.boot:spring-boot-starter-jooq',
             'org.springframework.cloud:spring-cloud-starter-stream-kafka',
             'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
@@ -17,7 +18,6 @@ dependencies {
             'io.grpc:grpc-services',
             'com.salesforce.servicelibs:reactor-grpc-stub',
             'net.devh:grpc-server-spring-boot-starter',
-            'io.disc99:protocol-buffers-spring-cloud-stream-starter',
             'org.apache.commons:commons-lang3',
             'org.javamoney:moneta',
             'org.liquibase:liquibase-core',

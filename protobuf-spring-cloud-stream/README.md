@@ -1,0 +1,1 @@
+Uses Daisuke Kanehira's [protocol-buffers-spring-cloud-stream](https://github.com/disc99/protocol-buffers-spring-cloud-stream)

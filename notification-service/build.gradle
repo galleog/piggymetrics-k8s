@@ -10,6 +10,7 @@ dependencies {
     compile(
             project(':pgm-core'),
             project(':grpc-common'),
+            project(':protobuf-spring-cloud-stream'),
             'org.springframework.boot:spring-boot-starter-jooq',
             'org.springframework.cloud:spring-cloud-starter-stream-kafka',
             'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
@@ -20,7 +21,6 @@ dependencies {
             'com.salesforce.servicelibs:reactor-grpc-stub',
             'net.devh:grpc-server-spring-boot-starter',
             'net.devh:grpc-client-spring-boot-starter',
-            'io.disc99:protocol-buffers-spring-cloud-stream-starter',
             'org.apache.commons:commons-lang3',
             'org.liquibase:liquibase-core',
             'com.google.guava:guava',
