@@ -5,12 +5,13 @@ apply plugin: 'com.google.cloud.tools.jib'
 description = 'api-gateway'
 
 dependencies {
-    compile(
+    implementation(
             project(':pgm-core'),
             project(':grpc-common'),
             'org.springframework.boot:spring-boot-starter-webflux',
             'org.springframework.boot:spring-boot-starter-security',
             'org.springframework.boot:spring-boot-starter-actuator',
+            'org.springframework.boot:spring-boot-autoconfigure',
             'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
             'org.springframework.security:spring-security-oauth2-resource-server',
             'org.springframework.security:spring-security-oauth2-jose',
@@ -25,7 +26,7 @@ dependencies {
             'org.slf4j:jul-to-slf4j'
     )
 
-    testCompile(
+    testImplementation(
             'org.springframework.boot:spring-boot-starter-test',
             'org.springframework.security:spring-security-test',
             'io.projectreactor:reactor-test',

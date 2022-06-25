@@ -7,7 +7,7 @@ apply plugin: 'io.freefair.aspectj.post-compile-weaving'
 description = 'notification-service'
 
 dependencies {
-    compile(
+    implementation(
             project(':pgm-core'),
             project(':grpc-common'),
             project(':protobuf-spring-cloud-stream'),
@@ -31,11 +31,11 @@ dependencies {
             'org.slf4j:jcl-over-slf4j',
             'org.postgresql:postgresql'
     )
-    compile('commons-validator:commons-validator') {
+    implementation('commons-validator:commons-validator') {
         exclude module: 'commons-logging'
     }
 
-    testCompile(
+    testImplementation(
             'org.springframework.boot:spring-boot-starter-test',
             'org.springframework.cloud:spring-cloud-stream-test-support',
             'io.projectreactor:reactor-test',
@@ -57,16 +57,12 @@ dependencies {
             "org.springframework:spring-aspects"
     )
 
-    jooqRuntime(
+    jooqGenerator(
             project(':liquibase-tc'),
             'org.testcontainers:postgresql',
             'org.postgresql:postgresql',
             'org.slf4j:slf4j-nop'
     )
-}
-
-aspectj {
-    version = "${ver.aspectj}"
 }
 
 protobuf {
@@ -111,42 +107,48 @@ jib {
 jooq {
     version = ver.jooq
 
-    domain(sourceSets.main) {
-        jdbc {
-            driver = database.driver
-            url = database.url
-            user = database.username
-            password = database.password
-        }
+    configurations {
+        main {
+            generationTool {
+                logging = org.jooq.meta.jaxb.Logging.WARN
 
-        generator {
-            database {
-                name = 'org.jooq.meta.postgres.PostgresDatabase'
-                includes = '.*'
-                excludes = 'databasechangelog.* | shedlock.*'
-                inputSchema = 'public'
-                forcedTypes {
-                    forcedType {
-                        userType = 'com.github.galleog.piggymetrics.notification.domain.NotificationType'
-                        enumConverter = true
-                        expression = '.*\\.NOTIFICATION_TYPE'
+                jdbc {
+                    driver = database.driver
+                    url = database.url
+                    user = database.username
+                    password = database.password
+                }
+
+                generator {
+                    database {
+                        name = 'org.jooq.meta.postgres.PostgresDatabase'
+                        includes = '.*'
+                        excludes = 'databasechangelog.* | shedlock.*'
+                        inputSchema = 'public'
+                        forcedTypes {
+                            forcedType {
+                                userType = 'com.github.galleog.piggymetrics.notification.domain.NotificationType'
+                                enumConverter = true
+                                expression = '.*\\.NOTIFICATION_TYPE'
+                            }
+                        }
+                    }
+                    generate {
+                        deprecated = false
+                        javaTimeTypes = true
+                        indexes = false
+                    }
+                    target {
+                        packageName = 'com.github.galleog.piggymetrics.notification.domain'
+                        directory = "$buildDir/generated/source/jooq"
                     }
                 }
-            }
-            generate {
-                deprecated = false
-                javaTimeTypes = true
-                indexes = false
-            }
-            target {
-                packageName = 'com.github.galleog.piggymetrics.notification.domain'
-                directory = "$buildDir/generated/source/jooq"
             }
         }
     }
 }
 
-generateDomainJooqSchemaSource.with {
+tasks.named('generateJooq').configure {
     javaExecSpec = { JavaExecSpec s ->
         s.systemProperties << [changeLogFile: "${project.projectDir}/src/main/resources/db/changelog/db.changelog-master.yaml"]
     }
