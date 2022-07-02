@@ -13,15 +13,22 @@ spring:
 
   jooq:
     schema: ${DATABASE_SCHEMA:statistics_service}
-    sql-dialect: postgres_10
+    sql-dialect: postgres
 
   liquibase:
     default-schema: ${DATABASE_SCHEMA:statistics_service}
 
   cloud:
+    function:
+      definition: accountUpdatedEventConsumer
+
     stream:
+      function:
+        bindings:
+          accountUpdatedEventConsumer-in-0: account-event-in
+
       bindings:
-        input:
+        account-event-in:
           destination: ${ACCOUNT_EVENT_TOPIC:account-events}
           content-type: application/x-protobuf
 

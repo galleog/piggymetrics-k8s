@@ -31,6 +31,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jooq.JooqTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.time.LocalDate;
@@ -46,6 +48,7 @@ import java.util.Optional;
 @JooqTest
 @ActiveProfiles("test")
 @Import(JooqConfig.class)
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 class JooqRecipientRepositoryTest {
     private static final String USERNAME_1 = "test1";
     private static final String USERNAME_2 = "test2";

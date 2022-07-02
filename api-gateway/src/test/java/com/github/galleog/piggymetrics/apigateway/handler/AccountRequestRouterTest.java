@@ -156,9 +156,10 @@ public class AccountRequestRouterTest extends BaseRouterTest {
         doReturn(Mono.just(stubAccountProto(ACCOUNT_NAME))).when(accountService).updateAccount(accountCaptor.capture());
 
         webClient.mutateWith(mockJwt(ACCOUNT_NAME))
+                .mutateWith(csrf())
                 .put()
                 .uri("/accounts/current")
-                .syncBody(stubAccount())
+                .bodyValue(stubAccount())
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
@@ -231,9 +232,10 @@ public class AccountRequestRouterTest extends BaseRouterTest {
         doReturn(Mono.error(ex)).when(accountService).updateAccount(accountCaptor.capture());
 
         webClient.mutateWith(mockJwt(ACCOUNT_NAME))
+                .mutateWith(csrf())
                 .put()
                 .uri("/accounts/current")
-                .syncBody(stubAccount())
+                .bodyValue(stubAccount())
                 .exchange()
                 .expectStatus().isNotFound();
 
@@ -250,7 +252,7 @@ public class AccountRequestRouterTest extends BaseRouterTest {
         webClient.mutateWith(csrf())
                 .put()
                 .uri("/accounts/current")
-                .syncBody(stubAccount())
+                .bodyValue(stubAccount())
                 .exchange()
                 .expectStatus().isUnauthorized();
     }

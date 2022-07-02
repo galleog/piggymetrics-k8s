@@ -11,6 +11,13 @@ jar {
 
 dependencies {
     implementation(
+            'org.slf4j:slf4j-api',
             'org.liquibase:liquibase-core'
+    )
+
+    runtimeOnly(
+            'ch.qos.logback:logback-classic',
+            'com.mattbertolini:liquibase-slf4j',
+            'org.yaml:snakeyaml'
     )
 }

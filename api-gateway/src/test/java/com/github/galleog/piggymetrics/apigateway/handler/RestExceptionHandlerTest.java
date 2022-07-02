@@ -2,6 +2,7 @@ package com.github.galleog.piggymetrics.apigateway.handler;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
 
 import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc.AccountServiceImplBase;
 import io.grpc.Status;
@@ -30,6 +31,7 @@ public class RestExceptionHandlerTest extends BaseRouterTest {
         doReturn(Mono.error(ex)).when(accountService).getAccount(any());
 
         webClient.mutateWith(mockJwt(ACCOUNT_NAME))
+                .mutateWith(csrf())
                 .get()
                 .uri("/accounts/current")
                 .exchange()
@@ -49,10 +51,11 @@ public class RestExceptionHandlerTest extends BaseRouterTest {
     @Test
     public void shouldReturnBadRequestIfCodecExceptionIsThrown() {
         webClient.mutateWith(mockJwt(ACCOUNT_NAME))
+                .mutateWith(csrf())
                 .put()
                 .uri("/accounts/current")
                 .contentType(MediaType.APPLICATION_JSON)
-                .syncBody("{\"items\": [], \"saving\": {\"interest\": 0.0, \"deposit\": false, \"capitalization\": false}}")
+                .bodyValue("{\"items\": [], \"saving\": {\"interest\": 0.0, \"deposit\": false, \"capitalization\": false}}")
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)

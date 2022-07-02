@@ -3,6 +3,7 @@ package com.github.galleog.piggymetrics.statistics.event;
 import static com.github.galleog.protobuf.java.type.converter.Converters.moneyConverter;
 
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
+import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.AccountUpdatedEvent;
 import com.github.galleog.piggymetrics.statistics.domain.DataPoint;
 import com.github.galleog.piggymetrics.statistics.domain.ItemMetric;
 import com.github.galleog.piggymetrics.statistics.domain.ItemType;
@@ -14,8 +15,6 @@ import com.google.common.collect.ImmutableList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.javamoney.moneta.Money;
-import org.springframework.cloud.stream.annotation.StreamListener;
-import org.springframework.cloud.stream.messaging.Sink;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * Consumer of events on account updates.
@@ -32,16 +32,16 @@ import java.util.Optional;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AccountUpdatedEventConsumer {
+public class AccountUpdatedEventConsumer implements Consumer<AccountUpdatedEvent> {
     @VisibleForTesting
     static final CurrencyUnit BASE_CURRENCY = Monetary.getCurrency("USD");
 
     private final MonetaryConversionService conversionService;
     private final DataPointRepository dataPointRepository;
 
-    @StreamListener(Sink.INPUT)
-    public void updateStatistics(AccountServiceProto.AccountUpdatedEvent event) {
-        logger.info("AccountUpdated event for account '{}' received", event.getAccountName());
+    @Override
+    public void accept(AccountUpdatedEvent event) {
+        logger.info("AccountUpdatedEvent for account '{}' received", event.getAccountName());
 
         List<ItemMetric> metrics = event.getItemsList().stream()
                 .map(this::toNormalizedMetric)

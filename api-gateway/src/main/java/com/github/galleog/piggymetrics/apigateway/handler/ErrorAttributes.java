@@ -1,6 +1,7 @@
 package com.github.galleog.piggymetrics.apigateway.handler;
 
 import io.grpc.Status;
+import org.springframework.boot.web.error.ErrorAttributeOptions;
 import org.springframework.boot.web.reactive.error.DefaultErrorAttributes;
 import org.springframework.core.codec.CodecException;
 import org.springframework.http.HttpStatus;
@@ -19,8 +20,8 @@ public class ErrorAttributes extends DefaultErrorAttributes {
     private static final String ERROR_KEY = "error";
 
     @Override
-    public Map<String, Object> getErrorAttributes(ServerRequest request, boolean includeStackTrace) {
-        Map<String, Object> result = super.getErrorAttributes(request, includeStackTrace);
+    public Map<String, Object> getErrorAttributes(ServerRequest request, ErrorAttributeOptions options) {
+        Map<String, Object> result = super.getErrorAttributes(request, options);
         if ((int) result.get(STATUS_KEY) == HttpStatus.INTERNAL_SERVER_ERROR.value()) {
             HttpStatus status = errorStatus(getError(request));
             result.put(STATUS_KEY, status.value());
@@ -39,13 +40,15 @@ public class ErrorAttributes extends DefaultErrorAttributes {
 
         Status status = Status.fromThrowable(error);
         switch (status.getCode()) {
-            case UNAUTHENTICATED:
-                return HttpStatus.UNAUTHORIZED;
-            case NOT_FOUND:
-                return HttpStatus.NOT_FOUND;
             case ALREADY_EXISTS:
             case INVALID_ARGUMENT:
                 return HttpStatus.BAD_REQUEST;
+            case UNAUTHENTICATED:
+                return HttpStatus.UNAUTHORIZED;
+            case PERMISSION_DENIED:
+                return HttpStatus.FORBIDDEN;
+            case NOT_FOUND:
+                return HttpStatus.NOT_FOUND;
             default:
                 return HttpStatus.INTERNAL_SERVER_ERROR;
         }

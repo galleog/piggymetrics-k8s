@@ -126,9 +126,10 @@ public class NotificationRequestRouterTest extends BaseRouterTest {
         doReturn(Mono.just(stubRecipientProto())).when(recipientService).updateRecipient(recipientCaptor.capture());
 
         webClient.mutateWith(mockJwt(USERNAME))
+                .mutateWith(csrf())
                 .put()
                 .uri(URI)
-                .syncBody(stubRecipient())
+                .bodyValue(stubRecipient())
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
@@ -172,7 +173,7 @@ public class NotificationRequestRouterTest extends BaseRouterTest {
         webClient.mutateWith(csrf())
                 .put()
                 .uri(URI)
-                .syncBody(stubRecipient())
+                .bodyValue(stubRecipient())
                 .exchange()
                 .expectStatus().isUnauthorized();
     }

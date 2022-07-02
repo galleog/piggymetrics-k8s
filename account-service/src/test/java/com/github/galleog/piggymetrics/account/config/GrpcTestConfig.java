@@ -1,5 +1,6 @@
 package com.github.galleog.piggymetrics.account.config;
 
+import com.google.common.collect.ImmutableList;
 import io.grpc.inprocess.InProcessServerBuilder;
 import net.devh.boot.grpc.server.config.GrpcServerProperties;
 import net.devh.boot.grpc.server.serverfactory.AbstractGrpcServerFactory;
@@ -8,7 +9,6 @@ import net.devh.boot.grpc.server.service.GrpcServiceDefinition;
 import net.devh.boot.grpc.server.service.GrpcServiceDiscoverer;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 /**
  * Test configuration for gRPC that issues in-process requests.

@@ -1,19 +1,19 @@
 package com.github.galleog.piggymetrics.account.config;
 
 import com.github.galleog.grpc.interceptor.LogServerInterceptor;
-import net.devh.boot.grpc.server.interceptor.GlobalServerInterceptorConfigurer;
-import org.springframework.context.annotation.Bean;
+import io.grpc.ServerInterceptor;
+import net.devh.boot.grpc.server.interceptor.GrpcGlobalServerInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 /**
  * Configuration for gRPC.
  */
-@Configuration
 @Profile("!test")
+@Configuration(proxyBeanMethods = false)
 public class GrpcConfig {
-    @Bean
-    public GlobalServerInterceptorConfigurer globalServerInterceptorConfigurer() {
-        return registry -> registry.addServerInterceptors(new LogServerInterceptor());
+    @GrpcGlobalServerInterceptor
+    public ServerInterceptor logServerInterceptor() {
+        return new LogServerInterceptor();
     }
 }

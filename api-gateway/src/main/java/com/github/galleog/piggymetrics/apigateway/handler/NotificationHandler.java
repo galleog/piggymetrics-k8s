@@ -52,13 +52,11 @@ public class NotificationHandler {
                         RecipientServiceProto.GetRecipientRequest.newBuilder()
                                 .setUserName(name)
                                 .build()
-                ).compose(req ->
-// @formatter:off
-                        // reactive gRPC uses another subscriber and we need to pass the ServerRequest
+                ).transformDeferredContextual((req, ctx) ->
+                        // reactive gRPC uses another subscriber. We need to pass the ServerRequest
                         // subscriber context to it so that it can resolve the current principal
-                        Mono.subscriberContext().flatMap(ctx -> recipientServiceStub.getRecipient(req.subscriberContext(ctx)))
+                        recipientServiceStub.getRecipient(req.contextWrite(ctx))
                 ).map(this::toRecipient);
-// @formatter:on
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(recipient, Recipient.class);
@@ -68,14 +66,13 @@ public class NotificationHandler {
      * Saves notification settings of the current principal.
      *
      * @param request the server request
-     * @return the saved recipient corresponding to the current principal}
+     * @return the saved recipient corresponding to the current principal
      */
     public Mono<ServerResponse> updateCurrentNotificationsSettings(ServerRequest request) {
         Mono<Recipient> recipient = Mono.zip(getCurrentUser(request), request.bodyToMono(Recipient.class))
                 .map(tuple -> toRecipientProto(tuple.getT1(), tuple.getT2()))
-                .compose(r ->
-                        Mono.subscriberContext().flatMap(ctx -> recipientServiceStub.updateRecipient(r.subscriberContext(ctx)))
-                ).map(this::toRecipient);
+                .transformDeferredContextual((req, ctx) -> recipientServiceStub.updateRecipient(req.contextWrite(ctx)))
+                .map(this::toRecipient);
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(recipient, Recipient.class);

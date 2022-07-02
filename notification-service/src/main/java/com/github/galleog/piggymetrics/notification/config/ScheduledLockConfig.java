@@ -10,7 +10,7 @@ import javax.sql.DataSource;
 /**
  * Configuration for <a href="https://github.com/lukas-krecan/ShedLock">ShedLock</a>.
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class ScheduledLockConfig {
     @Bean
     public LockProvider lockProvider(DataSource dataSource) {

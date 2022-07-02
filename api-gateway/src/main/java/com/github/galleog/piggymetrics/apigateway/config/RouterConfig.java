@@ -15,14 +15,14 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 /**
  * Configuration for Web routing.
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class RouterConfig {
     public static final String DEMO_ACCOUNT = "demo";
 
     @Bean
     public RouterFunction<ServerResponse> routeAccountRequests(AccountHandler handler) {
         return route().path("/accounts", builder ->
-                builder.GET("/demo", handler::getDemoAccount)
+                builder.GET("/demo", request -> handler.getDemoAccount())
                         .GET("/current", handler::getCurrentAccount)
                         .PUT("/current", contentType(MediaType.APPLICATION_JSON), handler::updateCurrentAccount)
         ).build();
@@ -39,7 +39,7 @@ public class RouterConfig {
     @Bean
     public RouterFunction<ServerResponse> routeDataPointRequests(StatisticsHandler handler) {
         return route().path("/statistics", builder ->
-                builder.GET("/demo", handler::getDemoStatistics)
+                builder.GET("/demo", request -> handler.getDemoStatistics())
                         .GET("/current", handler::getCurrentAccountStatistics)
 
         ).build();

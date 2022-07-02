@@ -32,12 +32,12 @@ public class PiggymetricsEventListenerProvider implements EventListenerProvider 
     @Override
     public void onEvent(Event event) {
         if (EventType.REGISTER.equals(event.getType())) {
-            UserRegisteredEvent uce = UserRegisteredEvent.newBuilder()
+            UserRegisteredEvent ure = UserRegisteredEvent.newBuilder()
                     .setUserId(event.getUserId())
                     .setUserName(event.getDetails().get(USERNAME_KEY))
                     .setEmail(event.getDetails().get(EMAIL_KEY))
                     .build();
-            ProducerRecord<String, UserRegisteredEvent> record = new ProducerRecord<>(topic, event.getUserId(), uce);
+            ProducerRecord<String, UserRegisteredEvent> record = new ProducerRecord<>(topic, event.getUserId(), ure);
             producer.send(record, ((metadata, exception) -> {
                 if (metadata != null) {
                     logger.info("Message on registration of user '" + record.key() + "' sent");

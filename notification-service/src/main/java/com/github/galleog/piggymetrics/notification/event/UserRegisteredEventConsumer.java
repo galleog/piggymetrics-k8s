@@ -8,24 +8,24 @@ import com.github.galleog.piggymetrics.notification.domain.Recipient;
 import com.github.galleog.piggymetrics.notification.repository.RecipientRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cloud.stream.annotation.StreamListener;
-import org.springframework.cloud.stream.messaging.Sink;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.function.Consumer;
+
 /**
- * Consumer of events on user creation.
+ * Consumer of events on new user registrations.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class UserRegisteredEventConsumer {
+public class UserRegisteredEventConsumer implements Consumer<UserRegisteredEvent> {
     private final RecipientRepository recipientRepository;
 
+    @Override
     @Transactional
-    @StreamListener(Sink.INPUT)
-    public void createRemindNotification(UserRegisteredEvent event) {
-        logger.info("UserCreated event for user '{}' received", event.getUserName());
+    public void accept(UserRegisteredEvent event) {
+        logger.info("UserRegisteredEvent for user '{}' received", event.getUserName());
 
         if (recipientRepository.getByUsername(event.getUserName()).isPresent()) {
             logger.warn("Notification settings for user '{}' already exists", event.getUserName());

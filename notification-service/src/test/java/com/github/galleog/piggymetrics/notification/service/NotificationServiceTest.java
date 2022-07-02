@@ -109,7 +109,6 @@ public class NotificationServiceTest {
      * Test for {@link NotificationService#sendBackupNotifications()}.
      */
     @Test
-    @SuppressWarnings("unchecked")
     public void shouldSendBackupNotificationsEvenWhenErrorsOccurForSomeRecipients() throws Exception {
         doReturn(Mono.just(AccountServiceProto.Account.getDefaultInstance())).when(accountService)
                 .getAccount(getAccountRequestCaptor.capture());

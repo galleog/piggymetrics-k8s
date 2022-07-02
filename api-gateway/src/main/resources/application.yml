@@ -30,3 +30,7 @@ grpc:
     statistics-service:
       address: "dns:///${STATISTICS_SERVICE_HOST:localhost}:${STATISTICS_SERVICE_PORT:9090}"
       negotiationType: PLAINTEXT
+
+server:
+  error:
+    include-message: always

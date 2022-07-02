@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Profile;
 /**
  * Configures database schema for <a href="https://www.jooq.org/">jOOQ</a>.
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class JooqConfig {
     @Value("${spring.jooq.schema}")
     private String schema;

@@ -12,7 +12,7 @@ dependencies {
             project(':protobuf-spring-cloud-stream'),
             'org.springframework.boot:spring-boot-starter-jooq',
             'org.springframework.cloud:spring-cloud-starter-stream-kafka',
-            'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
+            'org.springframework.cloud:spring-cloud-starter-kubernetes-fabric8-config',
             'io.grpc:grpc-protobuf',
             'io.grpc:grpc-stub',
             'io.grpc:grpc-services',
@@ -20,27 +20,41 @@ dependencies {
             'net.devh:grpc-server-spring-boot-starter',
             'org.apache.commons:commons-lang3',
             'org.javamoney:moneta',
-            'org.liquibase:liquibase-core',
             'com.google.guava:guava',
             'org.aspectj:aspectjrt',
             'org.aspectj:aspectjweaver',
-            'org.postgresql:postgresql',
+            'org.postgresql:postgresql'
+    )
+
+    compileOnly(
+            'jakarta.annotation:jakarta.annotation-api'
+    )
+
+    runtimeOnly(
             'org.slf4j:jul-to-slf4j'
     )
 
     testImplementation(
             'org.springframework.boot:spring-boot-starter-test',
-            'org.springframework.cloud:spring-cloud-stream-test-support',
             'io.projectreactor:reactor-test',
-            'org.testcontainers:postgresql',
             'com.ninja-squad:DbSetup',
             'org.assertj:assertj-db',
             'org.mockito:mockito-junit-jupiter',
             'org.junit.jupiter:junit-jupiter-api',
             'org.junit.jupiter:junit-jupiter-params'
     )
+    testImplementation("org.springframework.cloud:spring-cloud-stream") {
+        artifact {
+            name = "spring-cloud-stream"
+            extension = "jar"
+            type ="test-jar"
+            classifier = "test-binder"
+        }
+    }
 
     testRuntimeOnly(
+            'org.testcontainers:postgresql',
+            'org.liquibase:liquibase-core',
             'org.junit.jupiter:junit-jupiter-engine'
     )
 
@@ -51,8 +65,7 @@ dependencies {
     jooqGenerator(
             project(':liquibase-tc'),
             'org.testcontainers:postgresql',
-            'org.postgresql:postgresql',
-            'org.slf4j:slf4j-nop'
+            'org.postgresql:postgresql'
     )
 }
 

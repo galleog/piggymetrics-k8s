@@ -47,10 +47,9 @@ public class StatisticsHandler {
     /**
      * Gets statistical metrics for the demo account.
      *
-     * @param request the server request
      * @return a list of data points for the demo account
      */
-    public Mono<ServerResponse> getDemoStatistics(ServerRequest request) {
+    public Mono<ServerResponse> getDemoStatistics() {
         return getStatistics(Mono.just(DEMO_ACCOUNT));
     }
 

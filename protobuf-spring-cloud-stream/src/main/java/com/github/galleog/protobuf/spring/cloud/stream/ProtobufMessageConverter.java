@@ -28,7 +28,7 @@ public class ProtobufMessageConverter extends AbstractMessageConverter {
 
     @Override
     protected Object convertToInternal(Object payload, MessageHeaders headers, Object conversionHint) {
-        return ((AbstractMessageLite) payload).toByteArray();
+        return ((AbstractMessageLite<?, ?>) payload).toByteArray();
     }
 
     @Override

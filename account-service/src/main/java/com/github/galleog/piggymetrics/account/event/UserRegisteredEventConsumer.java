@@ -8,31 +8,30 @@ import com.google.common.annotations.VisibleForTesting;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.javamoney.moneta.Money;
-import org.springframework.cloud.stream.annotation.StreamListener;
-import org.springframework.cloud.stream.messaging.Sink;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import java.math.BigDecimal;
+import java.util.function.Consumer;
 
 /**
- * Consumer of events on user creation.
+ * Consumer of events on new user registrations.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class UserRegisteredEventConsumer {
+public class UserRegisteredEventConsumer implements Consumer<UserRegisteredEvent> {
     @VisibleForTesting
     public static final CurrencyUnit BASE_CURRENCY = Monetary.getCurrency("USD");
 
     private final AccountRepository accountRepository;
 
+    @Override
     @Transactional
-    @StreamListener(Sink.INPUT)
-    public void createAccount(UserRegisteredEvent event) {
-        logger.info("UserCreated event for user '{}' received", event.getUserName());
+    public void accept(UserRegisteredEvent event) {
+        logger.info("UserRegisteredEvent for user '{}' received", event.getUserName());
 
         if (accountRepository.getByName(event.getUserName()).isPresent()) {
             logger.warn("Account for user '{}' already exists", event.getUserName());

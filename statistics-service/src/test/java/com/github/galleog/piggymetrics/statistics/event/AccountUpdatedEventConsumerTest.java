@@ -20,6 +20,7 @@ import com.github.galleog.piggymetrics.statistics.repository.DataPointRepository
 import com.github.galleog.piggymetrics.statistics.service.MonetaryConversionService;
 import com.github.galleog.protobuf.java.type.MoneyProto;
 import net.devh.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration;
+import net.devh.boot.grpc.server.autoconfigure.GrpcServerFactoryAutoConfiguration;
 import org.javamoney.moneta.Money;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,11 +31,12 @@ import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.jooq.JooqAutoConfiguration;
+import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.cloud.stream.messaging.Sink;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.cloud.stream.binder.test.InputDestination;
+import org.springframework.cloud.stream.binder.test.TestChannelBinderConfiguration;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -51,8 +53,19 @@ import java.util.Optional;
  */
 @ActiveProfiles("test")
 @ExtendWith({SpringExtension.class, MockitoExtension.class})
-@SpringBootTest(classes = {StatisticsApplication.class, AccountUpdatedEventConsumerTest.Config.class})
+@ImportAutoConfiguration(exclude = {
+        JooqAutoConfiguration.class,
+        KafkaAutoConfiguration.class,
+        LiquibaseAutoConfiguration.class,
+        GrpcServerAutoConfiguration.class,
+        GrpcServerFactoryAutoConfiguration.class
+})
+@SpringBootTest(classes = {
+        StatisticsApplication.class,
+        TestChannelBinderConfiguration.class
+})
 class AccountUpdatedEventConsumerTest {
+    private static final String DESTINATION_NAME = "account-events";
     private static final CurrencyUnit EUR = Monetary.getCurrency("EUR");
     private static final String ACCOUNT_NAME = "test";
     private static final String SALARY = "Salary";
@@ -64,15 +77,15 @@ class AccountUpdatedEventConsumerTest {
     private static final String GROCERY = "Grocery";
     private static final Money GROCERY_AMOUNT = Money.of(10, EUR);
     private static final MoneyProto.Money GROCERY_PROTO_AMOUNT = moneyConverter().convert(GROCERY_AMOUNT);
-    private static final Money CONVERTED_CROCERY_AMOUNT = Money.of(11.2, BASE_CURRENCY);
-    private static final BigDecimal NORMALIZED_GROCERY_AMOUNT = CONVERTED_CROCERY_AMOUNT.getNumber().numberValue(BigDecimal.class);
+    private static final Money CONVERTED_GROCERY_AMOUNT = Money.of(11.2, BASE_CURRENCY);
+    private static final BigDecimal NORMALIZED_GROCERY_AMOUNT = CONVERTED_GROCERY_AMOUNT.getNumber().numberValue(BigDecimal.class);
     private static final Money SAVING_AMOUNT = Money.of(5900, EUR);
     private static final MoneyProto.Money SAVING_PROTO_AMOUNT = moneyConverter().convert(SAVING_AMOUNT);
     private static final Money CONVERTED_SAVING_AMOUNT = Money.of(6608, BASE_CURRENCY);
     private static final BigDecimal NORMALIZED_SAVING_AMOUNT = CONVERTED_SAVING_AMOUNT.getNumber().numberValue(BigDecimal.class);
 
     @Autowired
-    private Sink sink;
+    private InputDestination input;
     @MockBean
     private DataPointRepository dataPointRepository;
     @MockBean
@@ -81,12 +94,12 @@ class AccountUpdatedEventConsumerTest {
     private ArgumentCaptor<DataPoint> dataPointCaptor;
 
     /**
-     * Test for {@link AccountUpdatedEventConsumer#updateStatistics(AccountServiceProto.AccountUpdatedEvent)}
+     * Test for {@link AccountUpdatedEventConsumer#accept(AccountServiceProto.AccountUpdatedEvent)}
      * when creating a new data point.
      */
     @Test
     void shouldSaveNewDataPoint() {
-        when(conversionService.convert(GROCERY_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_CROCERY_AMOUNT);
+        when(conversionService.convert(GROCERY_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_GROCERY_AMOUNT);
         when(conversionService.convert(SALARY_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_SALARY_AMOUNT);
         when(conversionService.convert(SAVING_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_SAVING_AMOUNT);
 
@@ -94,7 +107,7 @@ class AccountUpdatedEventConsumerTest {
         when(dataPointRepository.save(dataPointCaptor.capture()))
                 .thenAnswer((Answer<DataPoint>) invocation -> invocation.getArgument(0));
 
-        sink.input().send(MessageBuilder.withPayload(stubEvent()).build());
+        input.send(MessageBuilder.withPayload(stubEvent()).build(), DESTINATION_NAME);
 
         assertThat(dataPointCaptor.getValue().getAccountName()).isEqualTo(ACCOUNT_NAME);
         assertThat(dataPointCaptor.getValue().getDate()).isEqualTo(LocalDate.now());
@@ -112,19 +125,19 @@ class AccountUpdatedEventConsumerTest {
     }
 
     /**
-     * Test for {@link AccountUpdatedEventConsumer#updateStatistics(AccountServiceProto.AccountUpdatedEvent)}
+     * Test for {@link AccountUpdatedEventConsumer#accept(AccountServiceProto.AccountUpdatedEvent)}
      * when updating an existing data point.
      */
     @Test
     void shouldUpdateExistingDataPoint() {
-        when(conversionService.convert(GROCERY_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_CROCERY_AMOUNT);
+        when(conversionService.convert(GROCERY_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_GROCERY_AMOUNT);
         when(conversionService.convert(SALARY_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_SALARY_AMOUNT);
         when(conversionService.convert(SAVING_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_SAVING_AMOUNT);
 
         when(dataPointRepository.update(dataPointCaptor.capture()))
-                .thenAnswer((Answer<Optional>) invocation -> Optional.of(invocation.getArgument(0)));
+                .thenAnswer((Answer) invocation -> Optional.of(invocation.getArgument(0)));
 
-        sink.input().send(MessageBuilder.withPayload(stubEvent()).build());
+        input.send(MessageBuilder.withPayload(stubEvent()).build(), DESTINATION_NAME);
 
         assertThat(dataPointCaptor.getValue().getAccountName()).isEqualTo(ACCOUNT_NAME);
         assertThat(dataPointCaptor.getValue().getDate()).isEqualTo(LocalDate.now());
@@ -165,14 +178,5 @@ class AccountUpdatedEventConsumerTest {
                 .addItems(salary)
                 .setSaving(saving)
                 .build();
-    }
-
-    @Configuration
-    @ImportAutoConfiguration(exclude = {
-            JooqAutoConfiguration.class,
-            LiquibaseAutoConfiguration.class,
-            GrpcServerAutoConfiguration.class
-    })
-    static class Config {
     }
 }

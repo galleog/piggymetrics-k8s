@@ -43,10 +43,9 @@ public class AccountHandler {
     /**
      * Returns the demo account.
      *
-     * @param request the server request
      * @return the found account
      */
-    public Mono<ServerResponse> getDemoAccount(ServerRequest request) {
+    public Mono<ServerResponse> getDemoAccount() {
         return getAccountByName(Mono.just(DEMO_ACCOUNT));
     }
 
@@ -67,12 +66,12 @@ public class AccountHandler {
      * @return the updated account, or {@link HttpStatus#NOT_FOUND} if there is no account for the current principal
      */
     public Mono<ServerResponse> updateCurrentAccount(ServerRequest request) {
-        Mono<Account> account = Mono.zip(getCurrentUser(request), request.bodyToMono(Account.class))
+        Mono<Object> account = Mono.zip(getCurrentUser(request), request.bodyToMono(Account.class))
                 .map(tuple -> toAccountProto(tuple.getT1(), tuple.getT2()))
-                .compose(a ->
-                        // reactive gRPC uses another subscriber and we need to pass the ServerRequest
+                .transformDeferredContextual((req, ctx) ->
+                        // reactive gRPC uses another subscriber. We need to pass the ServerRequest
                         // subscriber context to it so that it can resolve the current principal
-                        Mono.subscriberContext().flatMap(ctx -> accountServiceStub.updateAccount(a.subscriberContext(ctx)))
+                        accountServiceStub.updateAccount(req.contextWrite(ctx))
                 ).map(this::toAccount);
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
@@ -81,14 +80,11 @@ public class AccountHandler {
 
     private Mono<ServerResponse> getAccountByName(Mono<String> userName) {
         Mono<Account> account = userName.map(name ->
-                AccountServiceProto.GetAccountRequest.newBuilder()
-                        .setName(name)
-                        .build()
-        ).compose(req ->
-// @formatter:off
-                Mono.subscriberContext().flatMap(ctx -> accountServiceStub.getAccount(req.subscriberContext(ctx)))
-        ).map(this::toAccount);
-// @formatter:on
+                        AccountServiceProto.GetAccountRequest.newBuilder()
+                                .setName(name)
+                                .build()
+                ).transformDeferredContextual((req, ctx) -> accountServiceStub.getAccount(req.contextWrite(ctx)))
+                .map(this::toAccount);
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(account, Account.class);

@@ -35,6 +35,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jooq.JooqTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -48,6 +50,7 @@ import java.util.Optional;
 @JooqTest
 @ActiveProfiles("test")
 @Import(JooqConfig.class)
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 class JooqAccountRepositoryTest {
     private static final String ACCOUNT_1_NAME = "test1";
     private static final String ACCOUNT_2_NAME = "test2";

@@ -41,14 +41,12 @@ import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.jooq.JooqAutoConfiguration;
+import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.cloud.stream.messaging.Source;
-import org.springframework.cloud.stream.test.binder.MessageCollector;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
-import org.springframework.messaging.Message;
+import org.springframework.cloud.stream.binder.test.OutputDestination;
+import org.springframework.cloud.stream.binder.test.TestChannelBinderConfiguration;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 import reactor.core.publisher.Mono;
@@ -56,15 +54,25 @@ import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
 import java.util.Optional;
-import java.util.concurrent.BlockingQueue;
 
 /**
  * Tests for {@link AccountService}.
  */
 @ActiveProfiles("test")
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = {AccountApplication.class, AccountServiceTest.Config.class})
+@ImportAutoConfiguration(exclude = {
+        JooqAutoConfiguration.class,
+        KafkaAutoConfiguration.class,
+        LiquibaseAutoConfiguration.class
+})
+@SpringBootTest(classes = {
+        AccountApplication.class,
+        GrpcTestConfig.class,
+        ReactorTestConfig.class,
+        TestChannelBinderConfiguration.class
+})
 public class AccountServiceTest {
+    private static final String BINDING_NAME = "account-events";
     private static final String USD = "USD";
     private static final String NAME = "test";
     private static final GetAccountRequest GET_ACCOUNT_REQUEST = GetAccountRequest.newBuilder()
@@ -95,12 +103,10 @@ public class AccountServiceTest {
 
     @MockBean
     private AccountRepository repository;
+
     @Autowired
-    private Source source;
-    @Autowired
-    private MessageCollector collector;
+    private OutputDestination output;
     private ReactorAccountServiceGrpc.ReactorAccountServiceStub accountServiceStub;
-    private BlockingQueue<Message<?>> messages;
 
     @Before
     public void setUp() {
@@ -108,9 +114,6 @@ public class AccountServiceTest {
                 .directExecutor()
                 .build());
         accountServiceStub = ReactorAccountServiceGrpc.newReactorStub(channel);
-
-        messages = collector.forChannel(source.output());
-        messages.poll();
     }
 
     /**
@@ -178,7 +181,7 @@ public class AccountServiceTest {
     @Test
     public void shouldUpdateAccount() {
         when(repository.update(any(Account.class)))
-                .thenAnswer((Answer<Optional>) invocation -> Optional.of(invocation.getArgument(0)));
+                .thenAnswer((Answer) invocation -> Optional.of(invocation.getArgument(0)));
 
         Money savingAmount = Money.of(1500, USD);
         BigDecimal interest = BigDecimal.valueOf(3.32);
@@ -240,17 +243,16 @@ public class AccountServiceTest {
             return true;
         }));
 
-        assertThat(messages).extracting(msg -> (byte[]) msg.getPayload())
-                .containsExactly(
-                        AccountUpdatedEvent.newBuilder()
-                                .setAccountName(NAME)
-                                .addItems(rent)
-                                .addItems(meal)
-                                .setSaving(saving)
-                                .setNote(NOTE)
-                                .build()
-                                .toByteArray()
-                );
+        assertThat(output.receive(0, BINDING_NAME).getPayload()).isEqualTo(
+                AccountUpdatedEvent.newBuilder()
+                        .setAccountName(NAME)
+                        .addItems(rent)
+                        .addItems(meal)
+                        .setSaving(saving)
+                        .setNote(NOTE)
+                        .build()
+                        .toByteArray()
+        );
     }
 
     /**
@@ -277,7 +279,7 @@ public class AccountServiceTest {
                     return true;
                 }).verify();
 
-        assertThat(messages).isEmpty();
+        assertThat(output.receive(0, BINDING_NAME)).isNull();
     }
 
     /**
@@ -301,7 +303,7 @@ public class AccountServiceTest {
                 }).verify();
 
         verify(repository, never()).update(any());
-        assertThat(messages).isEmpty();
+        assertThat(output.receive(0, BINDING_NAME)).isNull();
     }
 
     private Account stubAccount() {
@@ -311,11 +313,5 @@ public class AccountServiceTest {
                 .item(SALARY)
                 .saving(SAVING)
                 .build();
-    }
-
-    @Configuration
-    @Import({GrpcTestConfig.class, ReactorTestConfig.class})
-    @ImportAutoConfiguration(exclude = {JooqAutoConfiguration.class, LiquibaseAutoConfiguration.class})
-    static class Config {
     }
 }

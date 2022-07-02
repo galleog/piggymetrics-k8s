@@ -14,6 +14,7 @@ import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
 import com.github.galleog.piggymetrics.auth.grpc.UserRegisteredEventProto.UserRegisteredEvent;
 import net.devh.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration;
+import net.devh.boot.grpc.server.autoconfigure.GrpcServerFactoryAutoConfiguration;
 import org.javamoney.moneta.Money;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,12 +25,12 @@ import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.jooq.JooqAutoConfiguration;
+import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.cloud.stream.messaging.Sink;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
+import org.springframework.cloud.stream.binder.test.InputDestination;
+import org.springframework.cloud.stream.binder.test.TestChannelBinderConfiguration;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -43,8 +44,20 @@ import java.util.UUID;
  */
 @ActiveProfiles("test")
 @ExtendWith({SpringExtension.class, MockitoExtension.class})
-@SpringBootTest(classes = {AccountApplication.class, UserRegisteredEventConsumerTest.Config.class})
+@ImportAutoConfiguration(exclude = {
+        JooqAutoConfiguration.class,
+        LiquibaseAutoConfiguration.class,
+        KafkaAutoConfiguration.class,
+        GrpcServerAutoConfiguration.class,
+        GrpcServerFactoryAutoConfiguration.class,
+})
+@SpringBootTest(classes = {
+        AccountApplication.class,
+        ReactorTestConfig.class,
+        TestChannelBinderConfiguration.class
+})
 class UserRegisteredEventConsumerTest {
+    private static final String DESTINATION_NAME = "user-events";
     private static final String USERNAME = "test";
     private static final UserRegisteredEvent EVENT = UserRegisteredEvent.newBuilder()
             .setUserId(UUID.randomUUID().toString())
@@ -53,14 +66,15 @@ class UserRegisteredEventConsumerTest {
             .build();
 
     @Autowired
-    private Sink sink;
+    private InputDestination input;
+
     @MockBean
     private AccountRepository accountRepository;
     @Captor
     private ArgumentCaptor<Account> accountCaptor;
 
     /**
-     * Test for {@link UserRegisteredEventConsumer#createAccount(UserRegisteredEvent)}.
+     * Test for {@link UserRegisteredEventConsumer#accept(UserRegisteredEvent)}.
      */
     @Test
     void shouldCreateAccount() {
@@ -68,7 +82,7 @@ class UserRegisteredEventConsumerTest {
         when(accountRepository.save(accountCaptor.capture()))
                 .thenAnswer((Answer<Account>) invocation -> invocation.getArgument(0));
 
-        sink.input().send(MessageBuilder.withPayload(EVENT).build());
+        input.send(MessageBuilder.withPayload(EVENT).build(), DESTINATION_NAME);
 
         assertThat(accountCaptor.getValue().getName()).isEqualTo(USERNAME);
         assertThat(accountCaptor.getValue().getSaving()).extracting(
@@ -78,7 +92,7 @@ class UserRegisteredEventConsumerTest {
     }
 
     /**
-     * Test for {@link UserRegisteredEventConsumer#createAccount(UserRegisteredEvent)}
+     * Test for {@link UserRegisteredEventConsumer#accept(UserRegisteredEvent)}
      * when an account with the same name already exists.
      */
     @Test
@@ -93,18 +107,8 @@ class UserRegisteredEventConsumerTest {
                 .build();
         when(accountRepository.getByName(USERNAME)).thenReturn(Optional.of(account));
 
-        sink.input().send(MessageBuilder.withPayload(EVENT).build());
+        input.send(MessageBuilder.withPayload(EVENT).build(), DESTINATION_NAME);
 
         verify(accountRepository, never()).save(any(Account.class));
-    }
-
-    @Configuration
-    @Import(ReactorTestConfig.class)
-    @ImportAutoConfiguration(exclude = {
-            JooqAutoConfiguration.class,
-            LiquibaseAutoConfiguration.class,
-            GrpcServerAutoConfiguration.class
-    })
-    static class Config {
     }
 }

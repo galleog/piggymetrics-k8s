@@ -12,7 +12,7 @@ dependencies {
             'org.springframework.boot:spring-boot-starter-security',
             'org.springframework.boot:spring-boot-starter-actuator',
             'org.springframework.boot:spring-boot-autoconfigure',
-            'org.springframework.cloud:spring-cloud-starter-kubernetes-config',
+            'org.springframework.cloud:spring-cloud-starter-kubernetes-fabric8-config',
             'org.springframework.security:spring-security-oauth2-resource-server',
             'org.springframework.security:spring-security-oauth2-jose',
             'io.grpc:grpc-protobuf',
@@ -22,7 +22,14 @@ dependencies {
             'org.apache.commons:commons-lang3',
             'org.javamoney:moneta',
             'org.zalando:jackson-datatype-money',
-            'com.google.guava:guava',
+            'com.google.guava:guava'
+    )
+
+    compileOnly(
+            'jakarta.annotation:jakarta.annotation-api'
+    )
+
+    runtimeOnly(
             'org.slf4j:jul-to-slf4j'
     )
 
@@ -76,6 +83,6 @@ idea {
 
 jib {
     from {
-        image = 'openjdk:8-jre-slim'
+        image = 'openjdk:11-jre-slim'
     }
 }

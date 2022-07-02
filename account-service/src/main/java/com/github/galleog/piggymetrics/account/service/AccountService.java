@@ -10,7 +10,6 @@ import com.github.galleog.piggymetrics.account.domain.ItemType;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.domain.TimePeriod;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
-import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.AccountUpdatedEvent;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.GetAccountRequest;
 import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
@@ -20,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.cloud.stream.messaging.Source;
+import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,10 +41,11 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
     private static final Converter<Account, AccountServiceProto.Account> ACCOUNT_CONVERTER = new AccountConverter();
     private static final Converter<Item, AccountServiceProto.Item> ITEM_CONVERTER = new ItemConverter();
     private static final Converter<Saving, AccountServiceProto.Saving> SAVING_CONVERTER = new SavingConverter();
+    private static final String ACCOUNT_EVENT_OUTPUT = "account-event-out";
 
     private final Scheduler jdbcScheduler;
-    private final Source source;
     private final AccountRepository repository;
+    private final StreamBridge streamBridge;
 
     @Override
     public Mono<AccountServiceProto.Account> getAccount(Mono<GetAccountRequest> request) {
@@ -72,14 +72,14 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
                         .withDescription("Account for user '" + account.getName() + "' not found")
                         .asRuntimeException());
 
-        // send an AccountUpdated event
-        AccountUpdatedEvent event = AccountUpdatedEvent.newBuilder()
+        // send an event on the account update
+        AccountServiceProto.AccountUpdatedEvent event = AccountServiceProto.AccountUpdatedEvent.newBuilder()
                 .setAccountName(account.getName())
                 .addAllItems(account.getItemsList())
                 .setSaving(account.getSaving())
                 .setNote(account.getNote())
                 .build();
-        source.output().send(MessageBuilder.withPayload(event).build());
+        streamBridge.send(ACCOUNT_EVENT_OUTPUT, MessageBuilder.withPayload(event).build());
 
         logger.info("Account for user '{}' updated", account.getName());
         return updated;
@@ -124,7 +124,8 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
                     builder.note(account.getNote());
                 }
                 return builder.build();
-            } catch (NullPointerException | IllegalArgumentException | DateTimeException | ArithmeticException | MonetaryException e) {
+            } catch (NullPointerException | IllegalArgumentException | DateTimeException | ArithmeticException |
+                     MonetaryException e) {
                 throw Status.INVALID_ARGUMENT
                         .withDescription(e.getMessage())
                         .withCause(e)

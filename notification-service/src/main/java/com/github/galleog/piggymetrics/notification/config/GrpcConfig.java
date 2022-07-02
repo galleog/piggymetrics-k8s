@@ -2,23 +2,24 @@ package com.github.galleog.piggymetrics.notification.config;
 
 import com.github.galleog.grpc.interceptor.LogClientInterceptor;
 import com.github.galleog.grpc.interceptor.LogServerInterceptor;
-import net.devh.boot.grpc.client.interceptor.GlobalClientInterceptorConfigurer;
-import net.devh.boot.grpc.server.interceptor.GlobalServerInterceptorConfigurer;
-import org.springframework.context.annotation.Bean;
+import io.grpc.ClientInterceptor;
+import io.grpc.ServerInterceptor;
+import net.devh.boot.grpc.client.interceptor.GrpcGlobalClientInterceptor;
+import net.devh.boot.grpc.server.interceptor.GrpcGlobalServerInterceptor;
 import org.springframework.context.annotation.Configuration;
 
 /**
  * Configuration for gRPC.
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class GrpcConfig {
-    @Bean
-    public GlobalClientInterceptorConfigurer globalClientInterceptorConfigurer() {
-        return registry -> registry.addClientInterceptors(new LogClientInterceptor());
+    @GrpcGlobalClientInterceptor
+    public ClientInterceptor logClientInterceptor() {
+        return new LogClientInterceptor();
     }
 
-    @Bean
-    public GlobalServerInterceptorConfigurer globalServerInterceptorConfigurer() {
-        return registry -> registry.addServerInterceptors(new LogServerInterceptor());
+    @GrpcGlobalServerInterceptor
+    public ServerInterceptor logServerInterceptor() {
+        return new LogServerInterceptor();
     }
 }

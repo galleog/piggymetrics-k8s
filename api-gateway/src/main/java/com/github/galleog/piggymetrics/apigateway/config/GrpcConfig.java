@@ -1,8 +1,8 @@
 package com.github.galleog.piggymetrics.apigateway.config;
 
 import com.github.galleog.grpc.interceptor.LogClientInterceptor;
-import net.devh.boot.grpc.client.interceptor.GlobalClientInterceptorConfigurer;
-import org.springframework.context.annotation.Bean;
+import io.grpc.ClientInterceptor;
+import net.devh.boot.grpc.client.interceptor.GrpcGlobalClientInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
@@ -10,10 +10,10 @@ import org.springframework.context.annotation.Profile;
  * Configuration for gRPC.
  */
 @Profile("!test")
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class GrpcConfig {
-    @Bean
-    public GlobalClientInterceptorConfigurer globalClientInterceptorConfigurer() {
-        return registry -> registry.addClientInterceptors(new LogClientInterceptor());
+    @GrpcGlobalClientInterceptor
+    public ClientInterceptor logClientInterceptor() {
+        return new LogClientInterceptor();
     }
 }

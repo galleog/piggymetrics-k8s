@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
  * Tests for {@link EnumDeserializer}.
  */
 class EnumDeserializerTest {
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Test for deserialization of non-null values.

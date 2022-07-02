@@ -12,8 +12,8 @@ import java.util.concurrent.Executors;
 /**
  * Configuration for <a href="https://projectreactor.io/">Project Reactor</a>.
  */
-@Configuration
 @Profile("!test")
+@Configuration(proxyBeanMethods = false)
 public class ReactorConfig {
     @Value("${spring.datasource.hikari.maximum-pool-size:10}")
     private int connectionPoolSize;

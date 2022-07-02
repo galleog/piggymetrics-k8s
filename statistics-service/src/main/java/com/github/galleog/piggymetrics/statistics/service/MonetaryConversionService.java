@@ -18,7 +18,7 @@ public class MonetaryConversionService {
      * @param amount   the monetary amount to be converted
      * @param currency the currency to convert the amount to
      * @return the converted monetary amount
-     * @throws NullPointerException if the amount or the currecy to convert to is {@code null}
+     * @throws NullPointerException if the amount or the currency to convert to is {@code null}
      */
     public Money convert(Money amount, CurrencyUnit currency) {
         Validate.notNull(amount);
