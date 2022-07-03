@@ -2,6 +2,7 @@ package com.github.galleog.protobuf.spring.cloud.stream;
 
 import com.google.protobuf.AbstractMessageLite;
 import org.springframework.core.MethodParameter;
+import org.springframework.lang.NonNull;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.AbstractMessageConverter;
@@ -22,17 +23,17 @@ public class ProtobufMessageConverter extends AbstractMessageConverter {
     }
 
     @Override
-    protected boolean supports(Class<?> clazz) {
+    protected boolean supports(@NonNull Class<?> clazz) {
         return AbstractMessageLite.class.isAssignableFrom(clazz);
     }
 
     @Override
-    protected Object convertToInternal(Object payload, MessageHeaders headers, Object conversionHint) {
+    protected Object convertToInternal(@NonNull Object payload, MessageHeaders headers, Object conversionHint) {
         return ((AbstractMessageLite<?, ?>) payload).toByteArray();
     }
 
     @Override
-    protected Object convertFromInternal(Message<?> message, Class<?> targetClass, Object conversionHint) {
+    protected Object convertFromInternal(Message<?> message, @NonNull Class<?> targetClass, Object conversionHint) {
         Object payload = message.getPayload();
         if (conversionHint instanceof MethodParameter) {
             return convert((MethodParameter) conversionHint, payload);

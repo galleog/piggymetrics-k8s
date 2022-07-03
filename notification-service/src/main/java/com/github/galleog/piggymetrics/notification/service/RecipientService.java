@@ -78,6 +78,7 @@ public class RecipientService extends ReactorRecipientServiceGrpc.RecipientServi
 
     private static final class RecipientConverter extends Converter<Recipient, RecipientServiceProto.Recipient> {
         @Override
+        @NonNull
         protected RecipientServiceProto.Recipient doForward(@NonNull Recipient recipient) {
             return RecipientServiceProto.Recipient.newBuilder()
                     .setUserName(recipient.getUsername())
@@ -92,6 +93,7 @@ public class RecipientService extends ReactorRecipientServiceGrpc.RecipientServi
         }
 
         @Override
+        @NonNull
         protected Recipient doBackward(@NonNull RecipientServiceProto.Recipient recipient) {
             try {
                 return Recipient.builder()
@@ -116,6 +118,7 @@ public class RecipientService extends ReactorRecipientServiceGrpc.RecipientServi
     private static final class NotificationSettingsConverter
             extends Converter<NotificationSettings, RecipientServiceProto.NotificationSettings> {
         @Override
+        @NonNull
         protected RecipientServiceProto.NotificationSettings doForward(@NonNull NotificationSettings notificationSettings) {
             RecipientServiceProto.NotificationSettings.Builder builder = RecipientServiceProto.NotificationSettings.newBuilder()
                     .setActive(notificationSettings.isActive())
@@ -127,6 +130,7 @@ public class RecipientService extends ReactorRecipientServiceGrpc.RecipientServi
         }
 
         @Override
+        @NonNull
         protected NotificationSettings doBackward(@NonNull RecipientServiceProto.NotificationSettings notificationSettings) {
             NotificationSettings.NotificationSettingsBuilder builder = NotificationSettings.builder()
                     .active(notificationSettings.getActive())

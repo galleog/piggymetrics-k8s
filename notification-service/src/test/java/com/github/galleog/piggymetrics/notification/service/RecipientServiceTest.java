@@ -40,7 +40,7 @@ class RecipientServiceTest {
     private static final String USERNAME = "test";
     private static final String EMAIL = "test@example.com";
     private static final String ANOTHER_EMAIL = "another@example.com";
-    private static final RecipientServiceProto.GetRecipientRequest GET_RECIPINET_REQUEST =
+    private static final RecipientServiceProto.GetRecipientRequest GET_RECIPIENT_REQUEST =
             RecipientServiceProto.GetRecipientRequest.newBuilder()
                     .setUserName(USERNAME)
                     .build();
@@ -62,7 +62,7 @@ class RecipientServiceTest {
         Recipient recipient = stubRecipient();
         when(repository.getByUsername(USERNAME)).thenReturn(Optional.of(recipient));
 
-        Mono<RecipientServiceProto.Recipient> recipientMono = recipientService.getRecipient(Mono.just(GET_RECIPINET_REQUEST));
+        Mono<RecipientServiceProto.Recipient> recipientMono = recipientService.getRecipient(Mono.just(GET_RECIPIENT_REQUEST));
         StepVerifier.create(recipientMono)
                 .expectNextMatches(r -> {
                     assertThat(r.getUserName()).isEqualTo(USERNAME);
@@ -84,7 +84,7 @@ class RecipientServiceTest {
     void shouldFailToGetRecipientWhenNoNotificationsFound() {
         when(repository.getByUsername(USERNAME)).thenReturn(Optional.empty());
 
-        Mono<RecipientServiceProto.Recipient> recipientMono = recipientService.getRecipient(Mono.just(GET_RECIPINET_REQUEST));
+        Mono<RecipientServiceProto.Recipient> recipientMono = recipientService.getRecipient(Mono.just(GET_RECIPIENT_REQUEST));
         StepVerifier.create(recipientMono)
                 .expectErrorMatches(t -> {
                     assertThat(t).isInstanceOf(StatusRuntimeException.class);
@@ -99,7 +99,7 @@ class RecipientServiceTest {
     @Test
     void shouldUpdateExistingRecipient() {
         when(repository.update(any(Recipient.class)))
-                .thenAnswer((Answer<Optional>) invocation -> Optional.of(invocation.getArgument(0)));
+                .thenAnswer((Answer) invocation -> Optional.of(invocation.getArgument(0)));
 
         LocalDate localDate = LocalDate.now().minusDays(3);
         Date date = dateConverter().convert(localDate);

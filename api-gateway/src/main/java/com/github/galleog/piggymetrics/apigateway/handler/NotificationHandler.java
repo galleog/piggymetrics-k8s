@@ -107,6 +107,7 @@ public class NotificationHandler {
     private static final class NotificationSettingsConverter
             extends Converter<NotificationSettings, RecipientServiceProto.NotificationSettings> {
         @Override
+        @NonNull
         protected RecipientServiceProto.NotificationSettings doForward(@NonNull NotificationSettings notificationSettings) {
             RecipientServiceProto.NotificationSettings.Builder builder = RecipientServiceProto.NotificationSettings.newBuilder()
                     .setActive(notificationSettings.isActive())
@@ -118,6 +119,7 @@ public class NotificationHandler {
         }
 
         @Override
+        @NonNull
         protected NotificationSettings doBackward(@NonNull RecipientServiceProto.NotificationSettings notificationSettings) {
             NotificationSettings.NotificationSettingsBuilder builder = NotificationSettings.builder()
                     .active(notificationSettings.getActive())

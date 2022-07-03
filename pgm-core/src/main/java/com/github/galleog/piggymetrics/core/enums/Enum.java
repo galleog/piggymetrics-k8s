@@ -3,6 +3,7 @@ package com.github.galleog.piggymetrics.core.enums;
 import com.fasterxml.jackson.annotation.JsonValue;
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.Validate;
+import org.springframework.lang.NonNull;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -153,8 +154,7 @@ public abstract class Enum<T extends Serializable & Comparable<? super T>>
             if (entry == null) {
                 entry = createEntry(enumClass);
                 // use copy on write to avoid synchronization of enumClasses
-                Map<Class<?>, Entry<?>> map = new WeakHashMap<>();
-                map.putAll(enumClasses);
+                Map<Class<?>, Entry<?>> map = new WeakHashMap<>(enumClasses);
                 map.put(enumClass, entry);
                 enumClasses = map;
             }
@@ -166,7 +166,7 @@ public abstract class Enum<T extends Serializable & Comparable<? super T>>
     }
 
     @Override
-    public int compareTo(Enum<T> o) {
+    public int compareTo(@NonNull Enum<T> o) {
         if (o == this) {
             return 0;
         }

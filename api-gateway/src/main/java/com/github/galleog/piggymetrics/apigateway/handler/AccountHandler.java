@@ -18,6 +18,7 @@ import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -121,6 +122,7 @@ public class AccountHandler {
 
     private static final class ItemConverter extends Converter<Item, AccountServiceProto.Item> {
         @Override
+        @NonNull
         protected AccountServiceProto.Item doForward(Item item) {
             return AccountServiceProto.Item.newBuilder()
                     .setType(item.getType())
@@ -132,6 +134,7 @@ public class AccountHandler {
         }
 
         @Override
+        @NonNull
         protected Item doBackward(AccountServiceProto.Item item) {
             return Item.builder()
                     .type(item.getType())
@@ -145,6 +148,7 @@ public class AccountHandler {
 
     private static final class SavingConverter extends Converter<Saving, AccountServiceProto.Saving> {
         @Override
+        @NonNull
         protected AccountServiceProto.Saving doForward(Saving saving) {
             return AccountServiceProto.Saving.newBuilder()
                     .setMoney(moneyConverter().convert(saving.getMoneyAmount()))
@@ -155,6 +159,7 @@ public class AccountHandler {
         }
 
         @Override
+        @NonNull
         protected Saving doBackward(AccountServiceProto.Saving saving) {
             return Saving.builder()
                     .moneyAmount(moneyConverter().reverse().convert(saving.getMoney()))

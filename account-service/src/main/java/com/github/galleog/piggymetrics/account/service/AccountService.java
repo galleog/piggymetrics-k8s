@@ -92,6 +92,7 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
 
     private static final class AccountConverter extends Converter<Account, AccountServiceProto.Account> {
         @Override
+        @NonNull
         protected AccountServiceProto.Account doForward(@NonNull Account account) {
             AccountServiceProto.Account.Builder builder = AccountServiceProto.Account.newBuilder()
                     .setName(account.getName())
@@ -109,6 +110,7 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
         }
 
         @Override
+        @NonNull
         protected Account doBackward(@NonNull AccountServiceProto.Account account) {
             try {
                 Account.AccountBuilder builder = Account.builder()
@@ -136,6 +138,7 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
 
     private static final class ItemConverter extends Converter<Item, AccountServiceProto.Item> {
         @Override
+        @NonNull
         protected AccountServiceProto.Item doForward(@NonNull Item item) {
             return AccountServiceProto.Item.newBuilder()
                     .setTitle(item.getTitle())
@@ -147,6 +150,7 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
         }
 
         @Override
+        @NonNull
         protected Item doBackward(@NonNull AccountServiceProto.Item item) {
             return Item.builder()
                     .title(item.getTitle())
@@ -160,6 +164,7 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
 
     private static final class SavingConverter extends Converter<Saving, AccountServiceProto.Saving> {
         @Override
+        @NonNull
         protected AccountServiceProto.Saving doForward(Saving saving) {
             return AccountServiceProto.Saving.newBuilder()
                     .setMoney(moneyConverter().convert(saving.getMoneyAmount()))
@@ -170,6 +175,7 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
         }
 
         @Override
+        @NonNull
         protected Saving doBackward(AccountServiceProto.Saving saving) {
             return Saving.builder()
                     .moneyAmount(moneyConverter().reverse().convert(saving.getMoney()))

@@ -38,13 +38,13 @@ public class EnumDeserializer<E extends Enum<?>> extends StdScalarDeserializer<E
     }
 
     @Override
-    public JsonDeserializer<?> createContextual(DeserializationContext ctxt, BeanProperty property) {
+    public JsonDeserializer<?> createContextual(DeserializationContext ctx, BeanProperty property) {
         if (property != null) {
             // get enumeration class
             Class<?> cls = property.getType().getRawClass();
             Validate.validState(Enum.class.isAssignableFrom(cls), "Class %s must be a subclass of Enum", cls.getName());
 
-            TypeFactory typeFactory = ctxt.getTypeFactory();
+            TypeFactory typeFactory = ctx.getTypeFactory();
             JavaType[] types = typeFactory.findTypeParameters(typeFactory.constructType(cls), Enum.class);
             if (types == null || types.length != 1) {
                 throw new IllegalStateException("Can not find the type parameter for Enum of type " + cls.getName());
@@ -56,12 +56,12 @@ public class EnumDeserializer<E extends Enum<?>> extends StdScalarDeserializer<E
 
     @Override
     @SuppressWarnings("unchecked")
-    public E deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+    public E deserialize(JsonParser p, DeserializationContext ctx) throws IOException {
         if (!p.getCurrentToken().isScalarValue()) {
-            ctxt.reportWrongTokenException(keyType, JsonToken.START_OBJECT, "Scalar value expected");
+            ctx.reportWrongTokenException(keyType, JsonToken.START_OBJECT, "Scalar value expected");
         }
 
-        Object key = ctxt.readValue(p, keyType);
+        Object key = ctx.readValue(p, keyType);
         return key != null ? Enum.valueOf((Class<? extends E>) handledType(), key) : null;
     }
 }

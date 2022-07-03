@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.lang.NonNull;
 
 /**
  * Configures database schema for <a href="https://www.jooq.org/">jOOQ</a>.
@@ -43,6 +44,7 @@ public class JooqConfig {
     public RecordMapperProvider recordMapperProvider() {
         return new RecordMapperProvider() {
             @Override
+            @NonNull
             @SuppressWarnings("unchecked")
             public <R extends Record, E> RecordMapper<R, E> provide(RecordType<R> recordType, Class<? extends E> type) {
                 if (NotificationSettings.class.equals(type)) {

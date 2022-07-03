@@ -30,6 +30,7 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 /**
  * Tests for {@link EmailService}.
@@ -76,10 +77,11 @@ class EmailServiceTest {
                 .containsExactly(EMAIL);
         assertThat(components.getPlainContent()).isEqualTo(TEXT);
 
-        Map<String, DataSource> attachments = components.getAttachmentList();
-        assertThat(attachments).hasSize(1);
+        Set<Map.Entry<String, DataSource>> attachments = components.getAttachmentList();
+        assertThat(attachments).extracting(Map.Entry::getKey)
+                .containsExactly(ATTACHMENT_FILENAME);
 
-        @Cleanup InputStream is = attachments.get(ATTACHMENT_FILENAME).getInputStream();
+        @Cleanup InputStream is = attachments.stream().findFirst().get().getValue().getInputStream();
         assertThat(IOUtils.toString(is, Charset.defaultCharset())).isEqualTo(ATTACHMENT);
     }
 
