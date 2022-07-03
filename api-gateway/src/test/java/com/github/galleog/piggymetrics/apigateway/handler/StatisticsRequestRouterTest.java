@@ -15,14 +15,11 @@ import com.github.galleog.piggymetrics.statistics.grpc.StatisticsServiceProto;
 import com.github.galleog.piggymetrics.statistics.grpc.StatisticsServiceProto.ItemType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.MockitoAnnotations;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.junit4.SpringRunner;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -35,7 +32,6 @@ import java.util.List;
 /**
  * Tests for routing statistics requests.
  */
-@RunWith(SpringRunner.class)
 public class StatisticsRequestRouterTest extends BaseRouterTest {
     private static final String ACCOUNT_NAME = "test";
     private static final LocalDate DAY_AGO = LocalDate.now().minusDays(1);
@@ -53,10 +49,8 @@ public class StatisticsRequestRouterTest extends BaseRouterTest {
 
     private StatisticsServiceImplBase statisticsService;
 
-    @Before
-    public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
-
+    @BeforeEach
+    void setUp() throws Exception {
         statisticsService = spyGrpcService(StatisticsServiceImplBase.class, StatisticsHandler.STATISTICS_SERVICE);
     }
 
@@ -64,7 +58,7 @@ public class StatisticsRequestRouterTest extends BaseRouterTest {
      * Test for GET /statistics/current.
      */
     @Test
-    public void shouldGetStatisticsForCurrentUser() {
+    void shouldGetStatisticsForCurrentUser() {
         doReturn(Flux.just(
                 stubDataPointProto(ACCOUNT_NAME, DAY_AGO, ImmutableList.of(grocery(), salary()), SAVING_AMOUNT)
         )).when(statisticsService).listDataPoints(requestCaptor.capture());
@@ -103,7 +97,7 @@ public class StatisticsRequestRouterTest extends BaseRouterTest {
      * Test for GET /statistics/current without authentication.
      */
     @Test
-    public void shouldFailToGetStatisticsForCurrentUserWithoutAuthentication() {
+    void shouldFailToGetStatisticsForCurrentUserWithoutAuthentication() {
         webClient.get()
                 .uri("/statistics/current")
                 .exchange()

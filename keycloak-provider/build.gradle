@@ -37,16 +37,12 @@ dependencies {
 
     testImplementation(
             'org.assertj:assertj-core',
-            'org.junit.jupiter:junit-jupiter-api',
+            'org.junit.jupiter:junit-jupiter',
             'org.jboss.logging:jboss-logging',
             'org.keycloak:keycloak-core',
             'org.keycloak:keycloak-server-spi',
             'org.keycloak:keycloak-server-spi-private',
             'org.mockito:mockito-junit-jupiter'
-    )
-
-    testRuntimeOnly(
-            'org.junit.jupiter:junit-jupiter-engine'
     )
 }
 

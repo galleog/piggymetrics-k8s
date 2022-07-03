@@ -44,13 +44,13 @@ dependencies {
     testImplementation(
             'org.springframework.boot:spring-boot-starter-test',
             'io.projectreactor:reactor-test',
-            'io.grpc:grpc-testing',
             'com.ninja-squad:DbSetup',
             'org.assertj:assertj-db',
             'org.mockito:mockito-junit-jupiter',
-            'org.junit.jupiter:junit-jupiter-api',
+            'org.junit.jupiter:junit-jupiter',
             'commons-io:commons-io',
-            'org.simplejavamail:simple-java-mail'
+            'org.simplejavamail:simple-java-mail',
+            'com.asarkar.grpc:grpc-test'
     )
     testImplementation("org.springframework.cloud:spring-cloud-stream") {
         artifact {
@@ -63,8 +63,7 @@ dependencies {
 
     testRuntimeOnly(
             'org.testcontainers:postgresql',
-            'org.liquibase:liquibase-core',
-            'org.junit.jupiter:junit-jupiter-engine'
+            'org.liquibase:liquibase-core'
     )
 
     aspect(

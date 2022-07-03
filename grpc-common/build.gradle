@@ -28,12 +28,11 @@ dependencies {
 
     testImplementation(
             'org.assertj:assertj-core',
-            'org.junit.jupiter:junit-jupiter-api'
+            'org.junit.jupiter:junit-jupiter'
     )
 
     testRuntimeOnly(
-            'ch.qos.logback:logback-classic',
-            'org.junit.jupiter:junit-jupiter-engine'
+            'ch.qos.logback:logback-classic'
     )
 }
 

@@ -12,6 +12,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.asarkar.grpc.test.GrpcCleanupExtension;
+import com.asarkar.grpc.test.Resources;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
 import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc;
 import com.github.galleog.piggymetrics.notification.domain.Frequency;
@@ -21,34 +23,31 @@ import com.github.galleog.piggymetrics.notification.domain.Recipient;
 import com.github.galleog.piggymetrics.notification.repository.RecipientRepository;
 import com.google.common.collect.ImmutableList;
 import io.grpc.ManagedChannel;
+import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
-import io.grpc.testing.GrpcCleanupRule;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
 import java.time.LocalDate;
 
 /**
  * Tests for {@link NotificationService}.
  */
-@RunWith(MockitoJUnitRunner.class)
-public class NotificationServiceTest {
+@ExtendWith({MockitoExtension.class, GrpcCleanupExtension.class})
+class NotificationServiceTest {
     private static final String SUCCESSFUL = "successful";
     private static final String FAILED = "failed";
-
-    @Rule
-    public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
-
+    private final LocalDate date = LocalDate.now().minusDays(3);
     @Mock
     private RecipientRepository recipientRepository;
     @Mock
@@ -59,23 +58,24 @@ public class NotificationServiceTest {
     private ReactorAccountServiceGrpc.AccountServiceImplBase accountService;
     private NotificationService notificationService;
 
-    private LocalDate date = LocalDate.now().minusDays(3);
+    private Resources resources;
     private Recipient successful;
     private Recipient failed;
 
-    @Before
-    public void setUp() throws Exception {
+    @BeforeEach
+    void setUp() throws Exception {
         accountService = spy(new ReactorAccountServiceGrpc.AccountServiceImplBase() {
         });
 
-        grpcCleanup.register(InProcessServerBuilder.forName(NotificationService.ACCOUNT_SERVICE)
+        Server server = InProcessServerBuilder.forName(NotificationService.ACCOUNT_SERVICE)
                 .directExecutor()
                 .addService(accountService)
-                .build()
-                .start());
-        ManagedChannel channel = grpcCleanup.register(InProcessChannelBuilder.forName(NotificationService.ACCOUNT_SERVICE)
+                .build();
+        resources.register(server.start(), Duration.ofSeconds(1));
+        ManagedChannel channel = InProcessChannelBuilder.forName(NotificationService.ACCOUNT_SERVICE)
                 .directExecutor()
-                .build());
+                .build();
+        resources.register(channel, Duration.ofSeconds(1));
 
         notificationService = new NotificationService(Schedulers.immediate(), recipientRepository, emailService);
         notificationService.accountServiceStub = ReactorAccountServiceGrpc.newReactorStub(channel);
@@ -109,7 +109,7 @@ public class NotificationServiceTest {
      * Test for {@link NotificationService#sendBackupNotifications()}.
      */
     @Test
-    public void shouldSendBackupNotificationsEvenWhenErrorsOccurForSomeRecipients() throws Exception {
+    void shouldSendBackupNotificationsEvenWhenErrorsOccurForSomeRecipients() throws Exception {
         doReturn(Mono.just(AccountServiceProto.Account.getDefaultInstance())).when(accountService)
                 .getAccount(getAccountRequestCaptor.capture());
         doThrow(RuntimeException.class).when(emailService).send(eq(NotificationType.BACKUP), eq(failed), anyString());
@@ -141,7 +141,7 @@ public class NotificationServiceTest {
      * Test for {@link NotificationService#sendRemindNotifications()}.
      */
     @Test
-    public void shouldSendRemindNotificationsEvenWhenErrorsOccurForSomeRecipients() throws Exception {
+    void shouldSendRemindNotificationsEvenWhenErrorsOccurForSomeRecipients() throws Exception {
         doThrow(RuntimeException.class).when(emailService).send(NotificationType.REMIND, failed, null);
 
         notificationService.sendRemindNotifications();

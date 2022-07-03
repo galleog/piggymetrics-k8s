@@ -27,7 +27,6 @@ ext {
             guava                    : '28.0-jre',
             assertjDb                : '1.2.0',
             commonsValidator         : '1.6',
-            junit                    : '5.8.2',
             commonsIo                : '2.6',
             shedlock                 : '2.5.0',
             simpleJavaMail           : '5.0.3',
@@ -43,7 +42,8 @@ ext {
             slf4jJbossLogging        : '1.2.0.Final',
             jooq                     : '3.14.16',
             jakartaAnnotation        : '1.3.5',
-            liquibaseSlf4j           : '4.1.0'
+            liquibaseSlf4j           : '4.1.0',
+            grpcTest                 : '1.2.1'
     ]
 
     database = [
@@ -84,7 +84,6 @@ subprojects {
             mavenBom SpringBootPlugin.BOM_COORDINATES
             mavenBom "org.springframework.cloud:spring-cloud-dependencies:${ver.springCloud}"
             mavenBom "org.keycloak.bom:keycloak-spi-bom:${ver.keycloak}"
-            mavenBom "org.junit:junit-bom:${ver.junit}"
             mavenBom "io.grpc:grpc-bom:${ver.grpc}"
             mavenBom "com.google.protobuf:protobuf-bom:${ver.protobuf}"
         }
@@ -112,6 +111,7 @@ subprojects {
             dependency "com.github.daniel-shuy:kafka-protobuf-serde:${ver.kafkaProtobuf}"
             dependency "jakarta.annotation:jakarta.annotation-api:${ver.jakartaAnnotation}"
             dependency "com.mattbertolini:liquibase-slf4j:${ver.liquibaseSlf4j}"
+            dependency "com.asarkar.grpc:grpc-test:${ver.grpcTest}"
         }
     }
 

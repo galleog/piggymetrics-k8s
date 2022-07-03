@@ -38,13 +38,8 @@ dependencies {
             'org.springframework.security:spring-security-test',
             'io.projectreactor:reactor-test',
             'com.google.protobuf:protobuf-java-util',
-            'io.grpc:grpc-testing',
-            'org.junit.jupiter:junit-jupiter-api'
-    )
-
-    testRuntimeOnly(
-            'org.junit.jupiter:junit-jupiter-engine',
-            'org.junit.vintage:junit-vintage-engine'
+            'com.asarkar.grpc:grpc-test',
+            'org.junit.jupiter:junit-jupiter'
     )
 }
 

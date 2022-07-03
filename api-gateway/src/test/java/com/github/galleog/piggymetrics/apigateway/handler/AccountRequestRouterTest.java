@@ -19,14 +19,11 @@ import com.github.galleog.piggymetrics.apigateway.model.account.Saving;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.javamoney.moneta.Money;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.MockitoAnnotations;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.junit4.SpringRunner;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -36,8 +33,7 @@ import java.time.LocalDateTime;
 /**
  * Tests for routing account requests.
  */
-@RunWith(SpringRunner.class)
-public class AccountRequestRouterTest extends BaseRouterTest {
+class AccountRequestRouterTest extends BaseRouterTest {
     private static final String ACCOUNT_NAME = "test";
     private static final String CURRENCY = "USD";
     private static final String ACCOUNT_NOTE = "note";
@@ -58,10 +54,8 @@ public class AccountRequestRouterTest extends BaseRouterTest {
 
     private AccountServiceImplBase accountService;
 
-    @Before
-    public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
-
+    @BeforeEach
+    void setUp() throws Exception {
         accountService = spyGrpcService(AccountServiceImplBase.class, AccountHandler.ACCOUNT_SERVICE);
     }
 
@@ -69,7 +63,7 @@ public class AccountRequestRouterTest extends BaseRouterTest {
      * Test for GET /accounts/demo.
      */
     @Test
-    public void shouldGetDemoAccount() {
+    void shouldGetDemoAccount() {
         doReturn(Mono.just(stubAccountProto(DEMO_ACCOUNT))).when(accountService).getAccount(getAccountRequestCaptor.capture());
 
         webClient.get()
@@ -104,7 +98,7 @@ public class AccountRequestRouterTest extends BaseRouterTest {
      * Test for GET /accounts/current.
      */
     @Test
-    public void shouldGetAccountOfCurrentUser() {
+    void shouldGetAccountOfCurrentUser() {
         doReturn(Mono.just(stubAccountProto(ACCOUNT_NAME))).when(accountService).getAccount(getAccountRequestCaptor.capture());
 
         webClient.mutateWith(mockJwt(ACCOUNT_NAME))
@@ -122,7 +116,7 @@ public class AccountRequestRouterTest extends BaseRouterTest {
      * Test for GET /accounts/current when no current account is found.
      */
     @Test
-    public void shouldFailToGetCurrentAccountIfItDoesNotExist() {
+    void shouldFailToGetCurrentAccountIfItDoesNotExist() {
         StatusRuntimeException ex = Status.NOT_FOUND.asRuntimeException();
         doReturn(Mono.error(ex)).when(accountService).getAccount(getAccountRequestCaptor.capture());
 
@@ -141,7 +135,7 @@ public class AccountRequestRouterTest extends BaseRouterTest {
      * Test for GET /accounts/current without authentication.
      */
     @Test
-    public void shouldFailToGetCurrentAccountWithoutAuthentication() {
+    void shouldFailToGetCurrentAccountWithoutAuthentication() {
         webClient.get()
                 .uri("/accounts/current")
                 .exchange()
@@ -152,7 +146,7 @@ public class AccountRequestRouterTest extends BaseRouterTest {
      * Test for PUT /accounts/current.
      */
     @Test
-    public void shouldUpdateCurrentAccount() {
+    void shouldUpdateCurrentAccount() {
         doReturn(Mono.just(stubAccountProto(ACCOUNT_NAME))).when(accountService).updateAccount(accountCaptor.capture());
 
         webClient.mutateWith(mockJwt(ACCOUNT_NAME))
@@ -227,7 +221,7 @@ public class AccountRequestRouterTest extends BaseRouterTest {
      * Test for PUT /accounts/current if there exists no account with the principal's name.
      */
     @Test
-    public void shouldFailToUpdateCurrentAccountIfItDoesNotExist() {
+    void shouldFailToUpdateCurrentAccountIfItDoesNotExist() {
         StatusRuntimeException ex = Status.NOT_FOUND.asRuntimeException();
         doReturn(Mono.error(ex)).when(accountService).updateAccount(accountCaptor.capture());
 
@@ -248,7 +242,7 @@ public class AccountRequestRouterTest extends BaseRouterTest {
      * Test for PUT /accounts/current without authentication.
      */
     @Test
-    public void shouldFailToUpdateCurrentAccountWithoutAuthentication() {
+    void shouldFailToUpdateCurrentAccountWithoutAuthentication() {
         webClient.mutateWith(csrf())
                 .put()
                 .uri("/accounts/current")

@@ -16,14 +16,11 @@ import com.github.galleog.piggymetrics.notification.grpc.RecipientServiceProto;
 import com.google.common.collect.ImmutableMap;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.MockitoAnnotations;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.junit4.SpringRunner;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -33,8 +30,7 @@ import java.util.Map;
 /**
  * Tests for routing notification requests.
  */
-@RunWith(SpringRunner.class)
-public class NotificationRequestRouterTest extends BaseRouterTest {
+class NotificationRequestRouterTest extends BaseRouterTest {
     private static final String USERNAME = "test";
     private static final String URI = "/notifications/current";
     private static final String EMAIL = "test@example.com";
@@ -48,10 +44,8 @@ public class NotificationRequestRouterTest extends BaseRouterTest {
 
     private RecipientServiceImplBase recipientService;
 
-    @Before
-    public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
-
+    @BeforeEach
+    void setUp() throws Exception {
         recipientService = spyGrpcService(RecipientServiceImplBase.class, NotificationHandler.NOTIFICATION_SERVICE);
     }
 
@@ -92,7 +86,7 @@ public class NotificationRequestRouterTest extends BaseRouterTest {
      * Test for GET /recipients/current when there is no recipient with the name of the current principal.
      */
     @Test
-    public void shouldFailToGeCurrentRecipientSettingsIfRecipientDoesNotExist() {
+    void shouldFailToGeCurrentRecipientSettingsIfRecipientDoesNotExist() {
         StatusRuntimeException ex = Status.NOT_FOUND.asRuntimeException();
         doReturn(Mono.error(ex)).when(recipientService).getRecipient(requestCaptor.capture());
 
@@ -111,7 +105,7 @@ public class NotificationRequestRouterTest extends BaseRouterTest {
      * Test for GET /recipients/current without authentication.
      */
     @Test
-    public void shouldFailToGetCurrentRecipientSettingsWithoutAuthentication() {
+    void shouldFailToGetCurrentRecipientSettingsWithoutAuthentication() {
         webClient.get()
                 .uri(URI)
                 .exchange()
@@ -122,7 +116,7 @@ public class NotificationRequestRouterTest extends BaseRouterTest {
      * Test for PUT /recipients/current.
      */
     @Test
-    public void shouldUpdateCurrentRecipientSettings() {
+    void shouldUpdateCurrentRecipientSettings() {
         doReturn(Mono.just(stubRecipientProto())).when(recipientService).updateRecipient(recipientCaptor.capture());
 
         webClient.mutateWith(mockJwt(USERNAME))
@@ -169,7 +163,7 @@ public class NotificationRequestRouterTest extends BaseRouterTest {
      * Test for PUT /recipients/current without authentication.
      */
     @Test
-    public void shouldFailToUpdateCurrentRecipientSettingsWithoutAuthentication() {
+    void shouldFailToUpdateCurrentRecipientSettingsWithoutAuthentication() {
         webClient.mutateWith(csrf())
                 .put()
                 .uri(URI)

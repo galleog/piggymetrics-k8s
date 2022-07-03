@@ -14,6 +14,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.asarkar.grpc.test.GrpcCleanupExtension;
+import com.asarkar.grpc.test.Resources;
 import com.github.galleog.piggymetrics.account.AccountApplication;
 import com.github.galleog.piggymetrics.account.config.GrpcTestConfig;
 import com.github.galleog.piggymetrics.account.config.ReactorTestConfig;
@@ -31,12 +33,10 @@ import io.grpc.ManagedChannel;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
-import io.grpc.testing.GrpcCleanupRule;
 import org.javamoney.moneta.Money;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
@@ -48,18 +48,19 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.cloud.stream.binder.test.OutputDestination;
 import org.springframework.cloud.stream.binder.test.TestChannelBinderConfiguration;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.Optional;
 
 /**
  * Tests for {@link AccountService}.
  */
 @ActiveProfiles("test")
-@RunWith(SpringRunner.class)
+@ExtendWith({SpringExtension.class, GrpcCleanupExtension.class})
 @ImportAutoConfiguration(exclude = {
         JooqAutoConfiguration.class,
         KafkaAutoConfiguration.class,
@@ -71,7 +72,7 @@ import java.util.Optional;
         ReactorTestConfig.class,
         TestChannelBinderConfiguration.class
 })
-public class AccountServiceTest {
+class AccountServiceTest {
     private static final String BINDING_NAME = "account-events";
     private static final String USD = "USD";
     private static final String NAME = "test";
@@ -98,9 +99,6 @@ public class AccountServiceTest {
             .interest(BigDecimal.ZERO)
             .build();
 
-    @Rule
-    public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
-
     @MockBean
     private AccountRepository repository;
 
@@ -108,11 +106,12 @@ public class AccountServiceTest {
     private OutputDestination output;
     private ReactorAccountServiceGrpc.ReactorAccountServiceStub accountServiceStub;
 
-    @Before
-    public void setUp() {
-        ManagedChannel channel = grpcCleanup.register(InProcessChannelBuilder.forName(GrpcTestConfig.SERVICE_NAME)
+    @BeforeEach
+    void setUp(Resources resources) {
+        ManagedChannel channel = InProcessChannelBuilder.forName(GrpcTestConfig.SERVICE_NAME)
                 .directExecutor()
-                .build());
+                .build();
+        resources.register(channel, Duration.ofSeconds(1));
         accountServiceStub = ReactorAccountServiceGrpc.newReactorStub(channel);
     }
 
@@ -120,7 +119,7 @@ public class AccountServiceTest {
      * Test for {@link AccountService#getAccount(Mono)}.
      */
     @Test
-    public void shouldGetAccount() {
+    void shouldGetAccount() {
         Account account = stubAccount();
         when(repository.getByName(NAME)).thenReturn(Optional.of(account));
 
@@ -164,7 +163,7 @@ public class AccountServiceTest {
      * Test for {@link AccountService#getAccount(Mono)} when no account is found.
      */
     @Test
-    public void shouldFailToFindAccountWhenNotFound() {
+    void shouldFailToFindAccountWhenNotFound() {
         when(repository.getByName(NAME)).thenReturn(Optional.empty());
 
         StepVerifier.create(accountServiceStub.getAccount(GET_ACCOUNT_REQUEST))
@@ -179,7 +178,7 @@ public class AccountServiceTest {
      * Test for {@link AccountService#updateAccount(Mono)}.
      */
     @Test
-    public void shouldUpdateAccount() {
+    void shouldUpdateAccount() {
         when(repository.update(any(Account.class)))
                 .thenAnswer((Answer) invocation -> Optional.of(invocation.getArgument(0)));
 
@@ -259,7 +258,7 @@ public class AccountServiceTest {
      * Test for {@link AccountService#updateAccount(Mono)} when the account to be updated isn't found.
      */
     @Test
-    public void shouldFailToUpdateAccountWhenNotFound() {
+    void shouldFailToUpdateAccountWhenNotFound() {
         when(repository.update(any(Account.class))).thenReturn(Optional.empty());
 
         Money savingAmount = Money.of(BigDecimal.ZERO, USD);
@@ -286,7 +285,7 @@ public class AccountServiceTest {
      * Test for {@link AccountService#updateAccount(Mono)} when account data are invalid.
      */
     @Test
-    public void shouldFailToUpdateAccountWhenDataInvalid() {
+    void shouldFailToUpdateAccountWhenDataInvalid() {
         AccountServiceProto.Saving saving = AccountServiceProto.Saving.newBuilder()
                 .setDeposit(true)
                 .build();

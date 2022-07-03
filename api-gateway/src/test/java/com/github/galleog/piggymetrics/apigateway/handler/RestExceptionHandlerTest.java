@@ -7,25 +7,22 @@ import static org.springframework.security.test.web.reactive.server.SecurityMock
 import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc.AccountServiceImplBase;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.junit4.SpringRunner;
 import reactor.core.publisher.Mono;
 
 /**
  * Tests for {@link RestExceptionHandler}.
  */
-@RunWith(SpringRunner.class)
-public class RestExceptionHandlerTest extends BaseRouterTest {
+class RestExceptionHandlerTest extends BaseRouterTest {
     private static final String ACCOUNT_NAME = "test";
 
     /**
      * Test for gRPC {@link Status#NOT_FOUND}.
      */
     @Test
-    public void shouldReturnNotFoundIfStatusNotFoundThrown() throws Exception {
+    void shouldReturnNotFoundIfStatusNotFoundThrown() throws Exception {
         AccountServiceImplBase accountService = spyGrpcService(AccountServiceImplBase.class, AccountHandler.ACCOUNT_SERVICE);
         StatusRuntimeException ex = Status.NOT_FOUND.asRuntimeException();
         doReturn(Mono.error(ex)).when(accountService).getAccount(any());
@@ -49,7 +46,7 @@ public class RestExceptionHandlerTest extends BaseRouterTest {
      * Test for thrown {@link org.springframework.core.codec.CodecException}.
      */
     @Test
-    public void shouldReturnBadRequestIfCodecExceptionIsThrown() {
+    void shouldReturnBadRequestIfCodecExceptionIsThrown() {
         webClient.mutateWith(mockJwt(ACCOUNT_NAME))
                 .mutateWith(csrf())
                 .put()
