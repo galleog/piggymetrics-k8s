@@ -1,5 +1,5 @@
 [![GitHub license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/galleog/piggymetrics-k8s/blob/k8s/LICENCE)
-[![Build master](https://github.com/galleog/piggymetrics-k8s/actions/workflows/build-master.yml/badge.svg))](https://github.com/galleog/piggymetrics-k8s/actions)
+[![Build master](https://github.com/galleog/piggymetrics-k8s/actions/workflows/build-master.yml/badge.svg)](https://github.com/galleog/piggymetrics-k8s/actions)
 [![codecov](https://codecov.io/gh/galleog/piggymetrics-k8s/branch/master/graph/badge.svg)](https://codecov.io/gh/galleog/piggymetrics-k8s)
 
 # Piggy Metrics
