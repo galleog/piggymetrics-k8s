@@ -33,7 +33,7 @@ jobs:
       - name: Check with Gradle
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: check
+          arguments: --stacktrace --warning-mode=all check
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -47,7 +47,7 @@ jobs:
       - name: Add COMMIT env variable with commit short sha
         run: echo "COMMIT=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV
 
-      - name: Build and push frontend
+      - name: Build and push frontend Docker image
         uses: docker/build-push-action@v2
         with:
           context: ./pgm-frontend
@@ -64,7 +64,7 @@ jobs:
       - name: Tag and push api-gateway image
         run: |
           docker tag $API_GATEWAY:$COMMIT $API_GATEWAY:latest
-          docker push $API_GATEWAY
+          docker push -a $API_GATEWAY
 
       - name: Build Jib Docker image for account-service
         uses: gradle/gradle-build-action@v2
@@ -74,7 +74,7 @@ jobs:
       - name: Tag and push account-service image
         run: |
           docker tag $ACCOUNT_SERVICE:$COMMIT $ACCOUNT_SERVICE:latest
-          docker push $ACCOUNT_SERVICE
+          docker push -a $ACCOUNT_SERVICE
 
       - name: Build Jib Docker image for statistics-service
         uses: gradle/gradle-build-action@v2
@@ -84,7 +84,7 @@ jobs:
       - name: Tag and push statistics-service image
         run: |
           docker tag $STATISTICS_SERVICE:$COMMIT $STATISTICS_SERVICE:latest
-          docker push $STATISTICS_SERVICE
+          docker push -a $STATISTICS_SERVICE
 
       - name: Build Jib Docker image for notification-service
         uses: gradle/gradle-build-action@v2
@@ -94,9 +94,14 @@ jobs:
       - name: Tag and push notification-service image
         run: |
           docker tag $NOTIFICATION_SERVICE:$COMMIT $NOTIFICATION_SERVICE:latest
-          docker push $NOTIFICATION_SERVICE
+          docker push -a $NOTIFICATION_SERVICE
 
-      - name: Build and push keycloak-provider
+      - name: Create a shadow jar for keycloak-provider
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: -p keycloak-provider shadowJar
+
+      - name: Build and push keycloak-provider Docker image
         uses: docker/build-push-action@v2
         with:
           context: ./keycloak-provider
