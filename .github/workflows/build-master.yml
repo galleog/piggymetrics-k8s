@@ -1,0 +1,106 @@
+name: Build master branch
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  FRONTEND: galleog/piggymetrics-frontend
+  API_GATEWAY: galleog/piggymetrics-api-gateway
+  ACCOUNT_SERVICE: galleog/piggymetrics-account-service
+  STATISTICS_SERVICE: galleog/piggymetrics-statistics-service
+  NOTIFICATION_SERVICE: galleog/piggymetrics-notification-service
+  KEYCLOAK_PROVIDER: galleog/piggymetrics-keycloak-provider
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Validate Gradle wrapper
+        uses: gradle/wrapper-validation-action@v1
+
+      - name: Set up java 11
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 11
+          check-latest: true
+
+      - name: Check with Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: check
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+
+      - name: Add COMMIT env variable with commit short sha
+        run: echo "COMMIT=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v2
+        with:
+          context: ./pgm-frontend
+          push: true
+          tags: |
+            ${{ env.FRONTEND }}:${{ env.COMMIT }}
+            ${{ env.FRONTEND }}:latest
+
+      - name: Build Jib Docker image for api-gateway
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: -p api-gateway jibDockerBuild --image=${{ env.API_GATEWAY }} -Djib.to.tags=${{ env.COMMIT }}
+
+      - name: Tag and push api-gateway image
+        run: |
+          docker tag $API_GATEWAY:$COMMIT $API_GATEWAY:latest
+          docker push $API_GATEWAY
+
+      - name: Build Jib Docker image for account-service
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: -p account-service jibDockerBuild --image=${{ env.ACCOUNT_SERVICE }} -Djib.to.tags=${{ env.COMMIT }}
+
+      - name: Tag and push account-service image
+        run: |
+          docker tag $ACCOUNT_SERVICE:$COMMIT $ACCOUNT_SERVICE:latest
+          docker push $ACCOUNT_SERVICE
+
+      - name: Build Jib Docker image for statistics-service
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: -p account-service jibDockerBuild --image=${{ env.STATISTICS_SERVICE }} -Djib.to.tags=${{ env.COMMIT }}
+
+      - name: Tag and push statistics-service image
+        run: |
+          docker tag $STATISTICS_SERVICE:$COMMIT $STATISTICS_SERVICE:latest
+          docker push $STATISTICS_SERVICE
+
+      - name: Build Jib Docker image for notification-service
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: -p account-service jibDockerBuild --image=${{ env.NOTIFICATION_SERVICE }} -Djib.to.tags=${{ env.COMMIT }}
+
+      - name: Tag and push notification-service image
+        run: |
+          docker tag $NOTIFICATION_SERVICE:$COMMIT $NOTIFICATION_SERVICE:latest
+          docker push $NOTIFICATION_SERVICE
+
+      - name: Build and push keycloak-provider
+        uses: docker/build-push-action@v2
+        with:
+          context: ./keycloak-provider
+          push: true
+          tags: |
+            ${{ env.KEYCLOAK_PROVIDER }}:${{ env.COMMIT }}
+            ${{ env.KEYCLOAK_PROVIDER }}:latest
