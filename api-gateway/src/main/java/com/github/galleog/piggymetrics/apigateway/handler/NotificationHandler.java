@@ -69,8 +69,8 @@ public class NotificationHandler {
      * @return the saved recipient corresponding to the current principal
      */
     public Mono<ServerResponse> updateCurrentNotificationsSettings(ServerRequest request) {
-        Mono<Recipient> recipient = Mono.zip(getCurrentUser(request), request.bodyToMono(Recipient.class))
-                .map(tuple -> toRecipientProto(tuple.getT1(), tuple.getT2()))
+        Mono<Recipient> recipient = getCurrentUser(request)
+                .zipWith(request.bodyToMono(Recipient.class), this::toRecipientProto)
                 .transformDeferredContextual((req, ctx) -> recipientServiceStub.updateRecipient(req.contextWrite(ctx)))
                 .map(this::toRecipient);
         return ServerResponse.ok()

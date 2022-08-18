@@ -18,6 +18,7 @@ include 'notification-service'
 include 'liquibase-tc'
 include 'keycloak-provider'
 include 'protobuf-spring-cloud-stream'
+include 'r2dbc-jooq'
 
 project(':pgm-core').projectDir = "$rootDir/pgm-core" as File
 project(':grpc-common').projectDir = "$rootDir/grpc-common" as File
@@ -28,4 +29,5 @@ project(':notification-service').projectDir = "$rootDir/notification-service" as
 project(':liquibase-tc').projectDir = "$rootDir/liquibase-tc" as File
 project(':keycloak-provider').projectDir = "$rootDir/keycloak-provider" as File
 project(':protobuf-spring-cloud-stream').projectDir = "$rootDir/protobuf-spring-cloud-stream" as File
+project(':r2dbc-jooq').projectDir = "$rootDir/r2dbc-jooq" as File
 

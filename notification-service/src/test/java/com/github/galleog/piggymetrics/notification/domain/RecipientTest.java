@@ -1,12 +1,19 @@
 package com.github.galleog.piggymetrics.notification.domain;
 
+import static com.github.galleog.piggymetrics.notification.domain.Frequency.MONTHLY;
+import static com.github.galleog.piggymetrics.notification.domain.Frequency.WEEKLY;
+import static com.github.galleog.piggymetrics.notification.domain.NotificationType.BACKUP;
+import static com.github.galleog.piggymetrics.notification.domain.NotificationType.REMIND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.tuple;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 /**
- * Test for {@link Recipient}.
+ * Tests for {@link Recipient}.
  */
 class RecipientTest {
     private static final String USERNAME = "test";
@@ -17,25 +24,34 @@ class RecipientTest {
      */
     @Test
     void shouldMarkRecipientNotified() {
-        NotificationSettings backup = NotificationSettings.builder()
+        var backup = NotificationSettings.builder()
                 .active(false)
-                .frequency(Frequency.MONTHLY)
+                .frequency(MONTHLY)
                 .build();
-        NotificationSettings remind = NotificationSettings.builder()
+        var remind = NotificationSettings.builder()
                 .active(true)
-                .frequency(Frequency.WEEKLY)
+                .frequency(WEEKLY)
                 .build();
-        Recipient recipient = Recipient.builder()
+        var recipient = Recipient.builder()
                 .username(USERNAME)
                 .email(EMAIL)
-                .notification(NotificationType.BACKUP, backup)
-                .notification(NotificationType.REMIND, remind)
+                .notification(BACKUP, backup)
+                .notification(REMIND, remind)
                 .build();
 
-        recipient.markNotified(NotificationType.REMIND);
+        var notified = recipient.markNotified(REMIND);
 
-        assertThat(recipient.getNotifications().get(NotificationType.BACKUP).isNotified()).isFalse();
-        assertThat(recipient.getNotifications().get(NotificationType.REMIND).isNotified()).isTrue();
+        assertThat(notified.getUsername()).isEqualTo(USERNAME);
+        assertThat(notified.getEmail()).isEqualTo(EMAIL);
+        assertThat(notified.getNotifications().entrySet()).extracting(
+                Map.Entry::getKey,
+                entry -> entry.getValue().isActive(),
+                entry -> entry.getValue().getFrequency(),
+                entry -> entry.getValue().isNotified()
+        ).containsExactlyInAnyOrder(
+                tuple(BACKUP, false, MONTHLY, false),
+                tuple(REMIND, true, WEEKLY, true)
+        );
     }
 
     /**
@@ -43,18 +59,18 @@ class RecipientTest {
      */
     @Test
     void shouldFailToMarkRecipientNotifiedIfNotificationInactive() {
-        NotificationSettings backup = NotificationSettings.builder()
+        var backup = NotificationSettings.builder()
                 .active(false)
-                .frequency(Frequency.MONTHLY)
+                .frequency(MONTHLY)
                 .build();
-        Recipient recipient = Recipient.builder()
+        var recipient = Recipient.builder()
                 .username(USERNAME)
                 .email(EMAIL)
-                .notification(NotificationType.BACKUP, backup)
+                .notification(BACKUP, backup)
                 .build();
 
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> recipient.markNotified(NotificationType.BACKUP));
+                .isThrownBy(() -> recipient.markNotified(BACKUP));
     }
 
     /**
@@ -62,17 +78,27 @@ class RecipientTest {
      */
     @Test
     void shouldNotMarkRecipientNotifiedIfBackupNotificationIsNotSet() {
-        NotificationSettings remind = NotificationSettings.builder()
+        var remind = NotificationSettings.builder()
                 .active(true)
-                .frequency(Frequency.WEEKLY)
+                .frequency(WEEKLY)
                 .build();
-        Recipient recipient = Recipient.builder()
+        var recipient = Recipient.builder()
                 .username(USERNAME)
                 .email(EMAIL)
-                .notification(NotificationType.REMIND, remind)
+                .notification(REMIND, remind)
                 .build();
 
-        recipient.markNotified(NotificationType.BACKUP);
-        assertThat(recipient.getNotifications()).containsOnlyKeys(NotificationType.REMIND);
+        var notified = recipient.markNotified(BACKUP);
+
+        assertThat(notified.getUsername()).isEqualTo(USERNAME);
+        assertThat(notified.getEmail()).isEqualTo(EMAIL);
+        assertThat(notified.getNotifications().entrySet()).extracting(
+                Map.Entry::getKey,
+                entry -> entry.getValue().isActive(),
+                entry -> entry.getValue().getFrequency(),
+                entry -> entry.getValue().isNotified()
+        ).containsExactly(
+                tuple(REMIND, true, WEEKLY, false)
+        );
     }
 }

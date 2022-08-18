@@ -67,8 +67,8 @@ public class AccountHandler {
      * @return the updated account, or {@link HttpStatus#NOT_FOUND} if there is no account for the current principal
      */
     public Mono<ServerResponse> updateCurrentAccount(ServerRequest request) {
-        Mono<Object> account = Mono.zip(getCurrentUser(request), request.bodyToMono(Account.class))
-                .map(tuple -> toAccountProto(tuple.getT1(), tuple.getT2()))
+        Mono<Object> account = getCurrentUser(request)
+                .zipWith(request.bodyToMono(Account.class), this::toAccountProto)
                 .transformDeferredContextual((req, ctx) ->
                         // reactive gRPC uses another subscriber. We need to pass the ServerRequest
                         // subscriber context to it so that it can resolve the current principal

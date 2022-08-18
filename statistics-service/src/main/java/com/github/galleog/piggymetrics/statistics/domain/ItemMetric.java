@@ -18,22 +18,18 @@ public class ItemMetric {
     /**
      * Identifier of this item.
      */
-    @Nullable
     private Long id;
     /**
      * Item type.
      */
-    @NonNull
     private ItemType type;
     /**
      * Item title.
      */
-    @NonNull
     private String title;
     /**
      * Metric monetary amount.
      */
-    @NonNull
     private BigDecimal moneyAmount;
 
     @Builder

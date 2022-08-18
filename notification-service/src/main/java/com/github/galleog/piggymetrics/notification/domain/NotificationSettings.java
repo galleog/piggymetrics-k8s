@@ -23,12 +23,10 @@ public class NotificationSettings {
     /**
      * Notification frequency.
      */
-    @NonNull
     private Frequency frequency;
     /**
      * Date when the notification was last sent.
      */
-    @Nullable
     private LocalDate notifyDate;
 
     @Builder
@@ -49,10 +47,18 @@ public class NotificationSettings {
     }
 
     /**
-     * Sets the last notified date to the current date.
+     * Returns new notification settings with the notified date set to the current date.
+     *
+     * @throws IllegalArgumentException if the notification settings aren't active
      */
-    void markNotified() {
-        setNotifyDate(LocalDate.now());
+    public NotificationSettings markNotified() {
+        Validate.isTrue(isActive());
+
+        return NotificationSettings.builder()
+                .active(true)
+                .frequency(getFrequency())
+                .notifyDate(LocalDate.now())
+                .build();
     }
 
     @Override

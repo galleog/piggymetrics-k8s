@@ -25,10 +25,6 @@ dependencies {
             'com.google.guava:guava'
     )
 
-    compileOnly(
-            'jakarta.annotation:jakarta.annotation-api'
-    )
-
     runtimeOnly(
             'org.slf4j:jul-to-slf4j'
     )

@@ -16,7 +16,6 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
 import java.text.MessageFormat;
 
 /**
@@ -46,15 +45,15 @@ public class EmailService {
         Validate.notNull(type);
         Validate.notNull(recipient);
 
-        String filename = type.getAttachment() != null ? env.getProperty(type.getAttachment()) : null;
+        var filename = type.getAttachment() != null ? env.getProperty(type.getAttachment()) : null;
         Validate.validState(StringUtils.isNotBlank(filename) || StringUtils.isAllBlank(filename, attachment),
                 "If an attachment is specified then its filename must not be blank");
 
-        String subject = env.getRequiredProperty(type.getSubject());
-        String text = MessageFormat.format(env.getRequiredProperty(type.getText()), recipient.getUsername());
+        var subject = env.getRequiredProperty(type.getSubject());
+        var text = MessageFormat.format(env.getRequiredProperty(type.getText()), recipient.getUsername());
 
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true);
+        var message = mailSender.createMimeMessage();
+        var helper = new MimeMessageHelper(message, true);
         helper.setTo(recipient.getEmail());
         helper.setSubject(subject);
         helper.setText(text);

@@ -3,7 +3,6 @@ package com.github.galleog.piggymetrics.notification.service;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
 import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc;
 import com.github.galleog.piggymetrics.notification.domain.NotificationType;
-import com.github.galleog.piggymetrics.notification.domain.Recipient;
 import com.github.galleog.piggymetrics.notification.repository.RecipientRepository;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.util.JsonFormat;
@@ -14,11 +13,9 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import reactor.core.Exceptions;
-import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Scheduler;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
-import java.util.List;
 
 /**
  * Service to sent email notifications scheduled using cron-like expressions.
@@ -30,7 +27,6 @@ public class NotificationService {
     @VisibleForTesting
     static final String ACCOUNT_SERVICE = "account-service";
 
-    private final Scheduler jdbcScheduler;
     private final RecipientRepository recipientRepository;
     private final EmailService emailService;
 
@@ -46,24 +42,23 @@ public class NotificationService {
     @Scheduled(cron = "${backup.cron}")
     @SchedulerLock(name = "backupNotifications")
     public void sendBackupNotifications() {
-        List<Recipient> recipients = recipientRepository.readyToNotify(NotificationType.BACKUP, LocalDate.now());
-        Flux.fromIterable(recipients)
-                .flatMap(recipient -> accountServiceStub.getAccount(
-                        AccountServiceProto.GetAccountRequest.newBuilder()
-                                .setName(recipient.getUsername())
-                                .build())
-                        .publishOn(jdbcScheduler)
-                        .doOnNext(account -> {
-                            try {
-                                emailService.send(NotificationType.BACKUP, recipient, JsonFormat.printer().print(account));
-                                recipient.markNotified(NotificationType.BACKUP);
-                                recipientRepository.update(recipient);
-                            } catch (Exception e) {
-                                throw Exceptions.propagate(e);
-                            }
-                        }).onErrorContinue((e, account) ->
-                                logger.error("Backup notification for user '" + recipient.getUsername() + "' failed", e)
-                        )
+        recipientRepository.readyToNotify(NotificationType.BACKUP, LocalDate.now())
+                .flatMap(recipient ->
+                        accountServiceStub.getAccount(
+                                        AccountServiceProto.GetAccountRequest.newBuilder()
+                                                .setName(recipient.getUsername())
+                                                .build()
+                                ).doOnNext(account -> {
+                                    try {
+                                        emailService.send(NotificationType.BACKUP, recipient,
+                                                JsonFormat.printer().print(account));
+                                    } catch (Exception e) {
+                                        throw Exceptions.propagate(e);
+                                    }
+                                }).doOnError(e ->
+                                        logger.error("Backup notification for user '" + recipient.getUsername() + "' failed", e))
+                                .onErrorResume(e -> Mono.empty())
+                                .flatMap(account -> recipientRepository.update(recipient.markNotified(NotificationType.BACKUP)))
                 ).count()
                 .subscribe(count -> logger.info("Backup notification sent to {} recipients", count));
     }
@@ -74,18 +69,20 @@ public class NotificationService {
     @Scheduled(cron = "${remind.cron}")
     @SchedulerLock(name = "remindNotifications")
     public void sendRemindNotifications() {
-        List<Recipient> recipients = recipientRepository.readyToNotify(NotificationType.REMIND, LocalDate.now());
-        Flux.fromIterable(recipients)
-                .publishOn(jdbcScheduler)
-                .doOnNext(recipient -> {
-                    try {
-                        emailService.send(NotificationType.REMIND, recipient, null);
-                        recipient.markNotified(NotificationType.REMIND);
-                        recipientRepository.update(recipient);
-                    } catch (Exception e) {
-                        logger.error("Reminder notification for user '" + recipient.getUsername() + "' failed", e);
-                    }
-                }).count()
+        recipientRepository.readyToNotify(NotificationType.REMIND, LocalDate.now())
+                .flatMap(recipient ->
+                        Mono.just(recipient)
+                                .doOnNext(r -> {
+                                    try {
+                                        emailService.send(NotificationType.REMIND, r, null);
+                                    } catch (Exception e) {
+                                        throw Exceptions.propagate(e);
+                                    }
+                                }).doOnError(e ->
+                                        logger.error("Reminder notification for user '" + recipient.getUsername() + "' failed", e))
+                                .onErrorResume(e -> Mono.empty())
+                ).flatMap(recipient -> recipientRepository.update(recipient.markNotified(NotificationType.REMIND)))
+                .count()
                 .subscribe(count -> logger.info("Reminder notification sent to {} recipients", count));
     }
 }

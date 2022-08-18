@@ -1,5 +1,6 @@
 package com.github.galleog.piggymetrics.statistics.event;
 
+import static com.github.galleog.piggymetrics.statistics.domain.DataPoint.updateStatistics;
 import static com.github.galleog.protobuf.java.type.converter.Converters.moneyConverter;
 
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
@@ -14,17 +15,15 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.javamoney.moneta.Money;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Consumer of events on account updates.
@@ -32,47 +31,42 @@ import java.util.function.Consumer;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AccountUpdatedEventConsumer implements Consumer<AccountUpdatedEvent> {
+public class AccountUpdatedEventConsumer implements Function<Flux<AccountUpdatedEvent>, Mono<Void>> {
     @VisibleForTesting
     static final CurrencyUnit BASE_CURRENCY = Monetary.getCurrency("USD");
 
     private final MonetaryConversionService conversionService;
     private final DataPointRepository dataPointRepository;
+    private final TransactionalOperator operator;
 
     @Override
-    public void accept(AccountUpdatedEvent event) {
-        logger.info("AccountUpdatedEvent for account '{}' received", event.getAccountName());
-
-        List<ItemMetric> metrics = event.getItemsList().stream()
-                .map(this::toNormalizedMetric)
-                .collect(ImmutableList.toImmutableList());
-        BigDecimal saving = conversionService.convert(
-                moneyConverter().reverse().convert(event.getSaving().getMoney()), BASE_CURRENCY
-        ).getNumber().numberValue(BigDecimal.class);
-
-        doUpdateStatistics(event.getAccountName(), metrics, saving);
+    public Mono<Void> apply(Flux<AccountUpdatedEvent> events) {
+        return events.doOnNext(event -> logger.info("AccountUpdatedEvent for account '{}' received", event.getAccountName()))
+                .flatMap(this::doUpdateStatistics)
+                .then();
     }
 
-    @Transactional
-    private void doUpdateStatistics(String accountName, List<ItemMetric> metrics, BigDecimal saving) {
-        LocalDate now = LocalDate.now();
-        DataPoint dataPoint = DataPoint.builder()
-                .accountName(accountName)
-                .date(now)
-                .build();
-        dataPoint.updateStatistics(metrics, saving);
-        Optional<DataPoint> updated = dataPointRepository.update(dataPoint);
-        if (updated.isPresent()) {
-            logger.info("Statistics for the account '{}' updated at {}", accountName, now);
-        } else {
-            dataPointRepository.save(dataPoint);
-            logger.info("Statistics for the account '{}' created at {}", accountName, now);
-        }
+    private Mono<DataPoint> doUpdateStatistics(AccountUpdatedEvent event) {
+        var metrics = event.getItemsList()
+                .stream()
+                .map(this::toNormalizedMetric)
+                .collect(ImmutableList.toImmutableList());
+        var saving = conversionService.convert(
+                moneyConverter().reverse().convert(event.getSaving().getMoney()), BASE_CURRENCY
+        ).getNumber().numberValue(BigDecimal.class);
+        var dataPoint = updateStatistics(event.getAccountName(), metrics, saving);
+
+        return dataPointRepository.update(dataPoint)
+                .doOnNext(dp -> logger.info("Statistics for the account '{}' updated at {}", dp.getAccountName(), dp.getDate()))
+                .switchIfEmpty(Mono.defer(() -> dataPointRepository.save(dataPoint)
+                        .doOnNext(dp ->
+                                logger.info("Statistics for the account '{}' created at {}", dp.getAccountName(), dp.getDate()))
+                )).as(operator::transactional);
     }
 
     private ItemMetric toNormalizedMetric(AccountServiceProto.Item item) {
-        Money money = moneyConverter().reverse().convert(item.getMoney());
-        BigDecimal amount = conversionService.convert(money, BASE_CURRENCY)
+        var money = moneyConverter().reverse().convert(item.getMoney());
+        var amount = conversionService.convert(money, BASE_CURRENCY)
                 .divide(TimePeriod.valueOf(item.getPeriod().name()).getBaseRatio())
                 .getNumber().numberValue(BigDecimal.class);
         return ItemMetric.builder()

@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Profile;
 @Configuration(proxyBeanMethods = false)
 public class GrpcConfig {
     @GrpcGlobalServerInterceptor
-    public ServerInterceptor logServerInterceptor() {
+    ServerInterceptor logServerInterceptor() {
         return new LogServerInterceptor();
     }
 }

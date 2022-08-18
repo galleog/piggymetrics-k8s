@@ -88,7 +88,8 @@ public class StatisticsRequestRouterTest extends BaseRouterTest {
                     );
                 });
 
-        StepVerifier.create(requestCaptor.getValue())
+        requestCaptor.getValue()
+                .as(StepVerifier::create)
                 .expectNextMatches(req -> ACCOUNT_NAME.equals(req.getAccountName()))
                 .verifyComplete();
     }
@@ -155,7 +156,8 @@ public class StatisticsRequestRouterTest extends BaseRouterTest {
                     );
                 });
 
-        StepVerifier.create(requestCaptor.getValue())
+        requestCaptor.getValue()
+                .as(StepVerifier::create)
                 .expectNextMatches(req -> DEMO_ACCOUNT.equals(req.getAccountName()))
                 .verifyComplete();
     }

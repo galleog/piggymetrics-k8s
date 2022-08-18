@@ -8,6 +8,7 @@ import com.github.galleog.piggymetrics.notification.domain.NotificationType;
 import com.github.galleog.piggymetrics.notification.domain.Recipient;
 import com.github.galleog.piggymetrics.notification.grpc.ReactorRecipientServiceGrpc;
 import com.github.galleog.piggymetrics.notification.grpc.RecipientServiceProto;
+import com.github.galleog.piggymetrics.notification.grpc.RecipientServiceProto.GetRecipientRequest;
 import com.github.galleog.piggymetrics.notification.repository.RecipientRepository;
 import com.google.common.base.Converter;
 import com.google.common.collect.ImmutableMap;
@@ -18,11 +19,8 @@ import net.devh.boot.grpc.server.service.GrpcService;
 import org.springframework.lang.NonNull;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
 
 import java.time.DateTimeException;
-import java.util.Optional;
-import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 /**
@@ -36,44 +34,38 @@ public class RecipientService extends ReactorRecipientServiceGrpc.RecipientServi
             NOTIFICATION_SETTINGS_CONVERTER = new NotificationSettingsConverter();
     private static final Converter<Recipient, RecipientServiceProto.Recipient> RECIPIENT_CONVERTER = new RecipientConverter();
 
-    private final Scheduler jdbcScheduler;
-    private final RecipientRepository repository;
+    private final RecipientRepository recipientRepository;
 
     @Override
-    public Mono<RecipientServiceProto.Recipient> getRecipient(Mono<RecipientServiceProto.GetRecipientRequest> request) {
-        return request.flatMap(req ->
-                async(() ->
-                        repository.getByUsername(req.getUserName())
-                                .orElseThrow(() -> Status.NOT_FOUND
-                                        .withDescription("Notifications for user '" + req.getUserName() + "' not found")
-                                        .asRuntimeException())
-                ).doOnNext(recipient -> logger.debug("Notifications for user '{}' found", recipient))
-        ).map(RECIPIENT_CONVERTER::convert);
-    }
-
-    @Override
-    public Mono<RecipientServiceProto.Recipient> updateRecipient(Mono<RecipientServiceProto.Recipient> request) {
-        return request.map(recipient -> RECIPIENT_CONVERTER.reverse().convert(recipient))
-                .flatMap(recipient -> async(() -> doUpdateRecipient(recipient)))
+    public Mono<RecipientServiceProto.Recipient> getRecipient(Mono<GetRecipientRequest> request) {
+        return request.map(GetRecipientRequest::getUserName)
+                .flatMap(this::doGetRecipient)
                 .map(RECIPIENT_CONVERTER::convert);
     }
 
+    @Override
     @Transactional
-    private Recipient doUpdateRecipient(Recipient recipient) {
-        Optional<Recipient> updated = repository.update(recipient);
-        if (updated.isPresent()) {
-            logger.info("Notification settings for user '{}' updated", recipient.getUsername());
-            return updated.get();
-        } else {
-            repository.save(recipient);
-            logger.info("Notification settings for user '{}' created", recipient.getUsername());
-            return recipient;
-        }
+    public Mono<RecipientServiceProto.Recipient> updateRecipient(Mono<RecipientServiceProto.Recipient> request) {
+        return request.map(recipient -> RECIPIENT_CONVERTER.reverse().convert(recipient))
+                .flatMap(this::doUpdateRecipient)
+                .map(RECIPIENT_CONVERTER::convert);
     }
 
-    private <T> Mono<T> async(Callable<? extends T> supplier) {
-        return Mono.<T>fromCallable(supplier)
-                .subscribeOn(jdbcScheduler);
+    private Mono<Recipient> doGetRecipient(String name) {
+        return recipientRepository.getByUsername(name)
+                .doOnNext(recipient -> logger.debug("Notifications for user '{}' found", name))
+                .switchIfEmpty(Mono.error(() -> Status.NOT_FOUND
+                        .withDescription("Notifications for user '" + name + "' not found")
+                        .asRuntimeException()));
+    }
+
+    private Mono<Recipient> doUpdateRecipient(Recipient recipient) {
+        return recipientRepository.update(recipient)
+                .doOnNext(r -> logger.info("Notification settings for user '{}' updated", r.getUsername()))
+                .switchIfEmpty(Mono.defer(() ->
+                        recipientRepository.save(recipient)
+                                .doOnNext(r -> logger.info("Notification settings for user '{}' created", r.getUsername()))
+                ));
     }
 
     private static final class RecipientConverter extends Converter<Recipient, RecipientServiceProto.Recipient> {
@@ -120,7 +112,7 @@ public class RecipientService extends ReactorRecipientServiceGrpc.RecipientServi
         @Override
         @NonNull
         protected RecipientServiceProto.NotificationSettings doForward(@NonNull NotificationSettings notificationSettings) {
-            RecipientServiceProto.NotificationSettings.Builder builder = RecipientServiceProto.NotificationSettings.newBuilder()
+            var builder = RecipientServiceProto.NotificationSettings.newBuilder()
                     .setActive(notificationSettings.isActive())
                     .setFrequency(notificationSettings.getFrequency().getKey());
             if (notificationSettings.getNotifyDate() != null) {
@@ -132,7 +124,7 @@ public class RecipientService extends ReactorRecipientServiceGrpc.RecipientServi
         @Override
         @NonNull
         protected NotificationSettings doBackward(@NonNull RecipientServiceProto.NotificationSettings notificationSettings) {
-            NotificationSettings.NotificationSettingsBuilder builder = NotificationSettings.builder()
+            var builder = NotificationSettings.builder()
                     .active(notificationSettings.getActive())
                     .frequency(Frequency.valueOf(notificationSettings.getFrequency()));
             if (notificationSettings.hasNotifyDate()) {

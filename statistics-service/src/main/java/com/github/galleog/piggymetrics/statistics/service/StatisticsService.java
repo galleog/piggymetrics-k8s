@@ -14,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
 
 import java.util.stream.Collectors;
 
@@ -25,19 +24,17 @@ import java.util.stream.Collectors;
 @GrpcService
 @RequiredArgsConstructor
 public class StatisticsService extends ReactorStatisticsServiceGrpc.StatisticsServiceImplBase {
-    private final Scheduler jdbcScheduler;
     private final DataPointRepository dataPointRepository;
 
     @Override
     public Flux<StatisticsServiceProto.DataPoint> listDataPoints(Mono<StatisticsServiceProto.ListDataPointsRequest> request) {
         return request.flatMapMany(req ->
-                Flux.defer(() -> Flux.fromStream(dataPointRepository.listByAccountName(req.getAccountName())))
+                dataPointRepository.listByAccountName(req.getAccountName())
                         .switchIfEmpty(Flux.error(
                                 Status.NOT_FOUND
                                         .withDescription("No statistics found for account '" + req.getAccountName() + "'")
                                         .asRuntimeException()
-                                )
-                        ).subscribeOn(jdbcScheduler)
+                        ))
         ).map(this::toDataPointProto);
     }
 

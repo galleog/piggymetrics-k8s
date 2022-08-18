@@ -17,20 +17,16 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.simplejavamail.converter.internal.mimemessage.MimeMessageParser;
-import org.simplejavamail.converter.internal.mimemessage.MimeMessageParser.ParsedMimeMessageComponents;
 import org.springframework.core.env.Environment;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mock.env.MockEnvironment;
 
-import javax.activation.DataSource;
 import javax.mail.Address;
 import javax.mail.Session;
 import javax.mail.internet.MimeMessage;
-import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 /**
  * Tests for {@link EmailService}.
@@ -67,21 +63,21 @@ class EmailServiceTest {
         when(mailSender.createMimeMessage())
                 .thenReturn(new MimeMessage(Session.getDefaultInstance(new Properties())));
 
-        EmailService emailService = new EmailService(mailSender, mockEnvironment());
+        var emailService = new EmailService(mailSender, mockEnvironment());
         emailService.send(NotificationType.BACKUP, recipient, ATTACHMENT);
         verify(mailSender).send(messageCaptor.capture());
 
-        ParsedMimeMessageComponents components = MimeMessageParser.parseMimeMessage(messageCaptor.getValue());
+        var components = MimeMessageParser.parseMimeMessage(messageCaptor.getValue());
         assertThat(components.getSubject()).isEqualTo(SUBJECT);
         assertThat(components.getToAddresses()).extracting(Address::toString)
                 .containsExactly(EMAIL);
         assertThat(components.getPlainContent()).isEqualTo(TEXT);
 
-        Set<Map.Entry<String, DataSource>> attachments = components.getAttachmentList();
+        var attachments = components.getAttachmentList();
         assertThat(attachments).extracting(Map.Entry::getKey)
                 .containsExactly(ATTACHMENT_FILENAME);
 
-        @Cleanup InputStream is = attachments.stream().findFirst().get().getValue().getInputStream();
+        @Cleanup var is = attachments.stream().findFirst().get().getValue().getInputStream();
         assertThat(IOUtils.toString(is, Charset.defaultCharset())).isEqualTo(ATTACHMENT);
     }
 
@@ -93,7 +89,7 @@ class EmailServiceTest {
         when(mailSender.createMimeMessage())
                 .thenReturn(new MimeMessage(Session.getDefaultInstance(new Properties())));
 
-        EmailService emailService = new EmailService(mailSender, mockEnvironment());
+        var emailService = new EmailService(mailSender, mockEnvironment());
         emailService.send(NotificationType.BACKUP, recipient, null);
         verify(mailSender).send(messageCaptor.capture());
         assertThat(MimeMessageParser.parseMimeMessage(messageCaptor.getValue()).getAttachmentList()).isEmpty();
@@ -105,7 +101,7 @@ class EmailServiceTest {
      */
     @Test
     void shouldFailToSendEmailIfAttachmentFilenameEmptyButAttachmentPassed() {
-        EmailService emailService = new EmailService(mailSender, mockEnvironment());
+        var emailService = new EmailService(mailSender, mockEnvironment());
         assertThatExceptionOfType(IllegalStateException.class)
                 .isThrownBy(() -> emailService.send(NotificationType.REMIND, recipient, ATTACHMENT));
     }
@@ -116,10 +112,10 @@ class EmailServiceTest {
      */
     @Test
     void shouldFailToSendEmailIfAttachmentFilenameNotSetButAttachmentPassed() {
-        Environment env = new MockEnvironment()
+        var env = new MockEnvironment()
                 .withProperty(NotificationType.BACKUP.getSubject(), SUBJECT)
                 .withProperty(NotificationType.BACKUP.getText(), TEXT);
-        EmailService emailService = new EmailService(mailSender, env);
+        var emailService = new EmailService(mailSender, env);
         assertThatExceptionOfType(IllegalStateException.class)
                 .isThrownBy(() -> emailService.send(NotificationType.BACKUP, recipient, ATTACHMENT));
     }

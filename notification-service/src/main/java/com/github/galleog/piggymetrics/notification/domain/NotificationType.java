@@ -22,17 +22,14 @@ public enum NotificationType {
     /**
      * Property that defines the notification email subject.
      */
-    @NonNull
     private String subject;
     /**
      * Property that defines the notification email text.
      */
-    @NonNull
     private String text;
     /**
      * Property that defines an attachment sent with the notification email.
      */
-    @Nullable
     private String attachment;
 
     NotificationType(@NonNull String subject, @NonNull String text, @Nullable String attachment) {

@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,19 +19,16 @@ import com.github.galleog.piggymetrics.notification.repository.RecipientReposito
 import com.google.type.Date;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.stubbing.Answer;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 import java.time.LocalDate;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Tests for {@link RecipientService}.
@@ -40,30 +38,27 @@ class RecipientServiceTest {
     private static final String USERNAME = "test";
     private static final String EMAIL = "test@example.com";
     private static final String ANOTHER_EMAIL = "another@example.com";
-    private static final RecipientServiceProto.GetRecipientRequest GET_RECIPIENT_REQUEST =
+    private static final Mono<RecipientServiceProto.GetRecipientRequest> GET_RECIPIENT_REQUEST = Mono.just(
             RecipientServiceProto.GetRecipientRequest.newBuilder()
                     .setUserName(USERNAME)
-                    .build();
+                    .build()
+    );
 
     @Mock
     private RecipientRepository repository;
+    @InjectMocks
     private RecipientService recipientService;
-
-    @BeforeEach
-    void setUp() {
-        recipientService = new RecipientService(Schedulers.immediate(), repository);
-    }
 
     /**
      * Test for {@link RecipientService#getRecipient(Mono)}.
      */
     @Test
     void shouldGetRecipient() {
-        Recipient recipient = stubRecipient();
-        when(repository.getByUsername(USERNAME)).thenReturn(Optional.of(recipient));
+        var recipient = stubRecipient();
+        when(repository.getByUsername(USERNAME)).thenReturn(Mono.just(recipient));
 
-        Mono<RecipientServiceProto.Recipient> recipientMono = recipientService.getRecipient(Mono.just(GET_RECIPIENT_REQUEST));
-        StepVerifier.create(recipientMono)
+        recipientService.getRecipient(GET_RECIPIENT_REQUEST)
+                .as(StepVerifier::create)
                 .expectNextMatches(r -> {
                     assertThat(r.getUserName()).isEqualTo(USERNAME);
                     assertThat(r.getEmail()).isEqualTo(EMAIL);
@@ -82,10 +77,10 @@ class RecipientServiceTest {
      */
     @Test
     void shouldFailToGetRecipientWhenNoNotificationsFound() {
-        when(repository.getByUsername(USERNAME)).thenReturn(Optional.empty());
+        when(repository.getByUsername(USERNAME)).thenReturn(Mono.empty());
 
-        Mono<RecipientServiceProto.Recipient> recipientMono = recipientService.getRecipient(Mono.just(GET_RECIPIENT_REQUEST));
-        StepVerifier.create(recipientMono)
+        recipientService.getRecipient(GET_RECIPIENT_REQUEST)
+                .as(StepVerifier::create)
                 .expectErrorMatches(t -> {
                     assertThat(t).isInstanceOf(StatusRuntimeException.class);
                     assertThat(Status.fromThrowable(t).getCode()).isEqualTo(Status.Code.NOT_FOUND);
@@ -99,27 +94,28 @@ class RecipientServiceTest {
     @Test
     void shouldUpdateExistingRecipient() {
         when(repository.update(any(Recipient.class)))
-                .thenAnswer((Answer) invocation -> Optional.of(invocation.getArgument(0)));
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        LocalDate localDate = LocalDate.now().minusDays(3);
-        Date date = dateConverter().convert(localDate);
-        RecipientServiceProto.NotificationSettings backup = RecipientServiceProto.NotificationSettings.newBuilder()
+        var localDate = LocalDate.now().minusDays(3);
+        var date = dateConverter().convert(localDate);
+        var backup = RecipientServiceProto.NotificationSettings.newBuilder()
                 .setActive(false)
                 .setFrequency(Frequency.MONTHLY.getKey())
                 .setNotifyDate(date)
                 .build();
-        RecipientServiceProto.NotificationSettings remind = RecipientServiceProto.NotificationSettings.newBuilder()
+        var remind = RecipientServiceProto.NotificationSettings.newBuilder()
                 .setActive(true)
                 .setFrequency(Frequency.WEEKLY.getKey())
                 .build();
-        RecipientServiceProto.Recipient recipient = RecipientServiceProto.Recipient.newBuilder()
+        var recipient = RecipientServiceProto.Recipient.newBuilder()
                 .setUserName(USERNAME)
                 .setEmail(ANOTHER_EMAIL)
                 .putNotifications(BACKUP.name(), backup)
                 .putNotifications(REMIND.name(), remind)
                 .build();
-        Mono<RecipientServiceProto.Recipient> recipientMono = recipientService.updateRecipient(Mono.just(recipient));
-        StepVerifier.create(recipientMono)
+
+        recipientService.updateRecipient(Mono.just(recipient))
+                .as(StepVerifier::create)
                 .expectNextMatches(r -> {
                     assertThat(r.getUserName()).isEqualTo(USERNAME);
                     assertThat(r.getEmail()).isEqualTo(ANOTHER_EMAIL);
@@ -149,6 +145,7 @@ class RecipientServiceTest {
             );
             return true;
         }));
+        verify(repository, never()).save(any());
     }
 
     /**
@@ -156,28 +153,30 @@ class RecipientServiceTest {
      */
     @Test
     void shouldSaveNewRecipient() {
-        when(repository.update(any(Recipient.class))).thenReturn(Optional.empty());
+        when(repository.update(any(Recipient.class))).thenReturn(Mono.empty());
+        when(repository.save(any(Recipient.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        LocalDate localDate = LocalDate.now().minusDays(1);
-        Date date = dateConverter().convert(localDate);
-        RecipientServiceProto.NotificationSettings backup = RecipientServiceProto.NotificationSettings.newBuilder()
+        var localDate = LocalDate.now().minusDays(1);
+        var date = dateConverter().convert(localDate);
+        var backup = RecipientServiceProto.NotificationSettings.newBuilder()
                 .setActive(true)
                 .setFrequency(Frequency.QUARTERLY.getKey())
                 .build();
-        RecipientServiceProto.NotificationSettings remind = RecipientServiceProto.NotificationSettings.newBuilder()
+        var remind = RecipientServiceProto.NotificationSettings.newBuilder()
                 .setActive(true)
                 .setFrequency(Frequency.WEEKLY.getKey())
                 .setNotifyDate(date)
                 .build();
-        RecipientServiceProto.Recipient recipient = RecipientServiceProto.Recipient.newBuilder()
+        var recipient = RecipientServiceProto.Recipient.newBuilder()
                 .setUserName(USERNAME)
                 .setEmail(EMAIL)
                 .putNotifications(BACKUP.name(), backup)
                 .putNotifications(REMIND.name(), remind)
                 .build();
 
-        Mono<RecipientServiceProto.Recipient> recipientMono = recipientService.updateRecipient(Mono.just(recipient));
-        StepVerifier.create(recipientMono)
+        recipientService.updateRecipient(Mono.just(recipient))
+                .as(StepVerifier::create)
                 .expectNextMatches(r -> {
                     assertThat(r.getUserName()).isEqualTo(USERNAME);
                     assertThat(r.getEmail()).isEqualTo(EMAIL);
@@ -210,7 +209,7 @@ class RecipientServiceTest {
     }
 
     private Recipient stubRecipient() {
-        NotificationSettings backup = NotificationSettings.builder()
+        var backup = NotificationSettings.builder()
                 .active(true)
                 .frequency(Frequency.QUARTERLY)
                 .build();

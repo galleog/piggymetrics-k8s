@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
-import com.github.galleog.piggymetrics.statistics.StatisticsApplication;
 import com.github.galleog.piggymetrics.statistics.domain.DataPoint;
 import com.github.galleog.piggymetrics.statistics.domain.ItemMetric;
 import com.github.galleog.piggymetrics.statistics.domain.ItemType;
@@ -19,53 +18,31 @@ import com.github.galleog.piggymetrics.statistics.domain.TimePeriod;
 import com.github.galleog.piggymetrics.statistics.repository.DataPointRepository;
 import com.github.galleog.piggymetrics.statistics.service.MonetaryConversionService;
 import com.github.galleog.protobuf.java.type.MoneyProto;
-import net.devh.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration;
-import net.devh.boot.grpc.server.autoconfigure.GrpcServerFactoryAutoConfiguration;
 import org.javamoney.moneta.Money;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.stubbing.Answer;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.jooq.JooqAutoConfiguration;
-import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
-import org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.cloud.stream.binder.test.InputDestination;
-import org.springframework.cloud.stream.binder.test.TestChannelBinderConfiguration;
-import org.springframework.integration.support.MessageBuilder;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.Optional;
 
 /**
  * Tests for {@link AccountUpdatedEventConsumer}.
  */
-@ActiveProfiles("test")
-@ExtendWith({SpringExtension.class, MockitoExtension.class})
-@ImportAutoConfiguration(exclude = {
-        JooqAutoConfiguration.class,
-        KafkaAutoConfiguration.class,
-        LiquibaseAutoConfiguration.class,
-        GrpcServerAutoConfiguration.class,
-        GrpcServerFactoryAutoConfiguration.class
-})
-@SpringBootTest(classes = {
-        StatisticsApplication.class,
-        TestChannelBinderConfiguration.class
-})
+@ExtendWith(MockitoExtension.class)
 class AccountUpdatedEventConsumerTest {
-    private static final String DESTINATION_NAME = "account-events";
     private static final CurrencyUnit EUR = Monetary.getCurrency("EUR");
     private static final String ACCOUNT_NAME = "test";
     private static final String SALARY = "Salary";
@@ -84,30 +61,41 @@ class AccountUpdatedEventConsumerTest {
     private static final Money CONVERTED_SAVING_AMOUNT = Money.of(6608, BASE_CURRENCY);
     private static final BigDecimal NORMALIZED_SAVING_AMOUNT = CONVERTED_SAVING_AMOUNT.getNumber().numberValue(BigDecimal.class);
 
-    @Autowired
-    private InputDestination input;
-    @MockBean
+    @Mock
     private DataPointRepository dataPointRepository;
-    @MockBean
+    @Mock
     private MonetaryConversionService conversionService;
+    @Mock
+    private TransactionalOperator operator;
     @Captor
     private ArgumentCaptor<DataPoint> dataPointCaptor;
+    @InjectMocks
+    private AccountUpdatedEventConsumer consumer;
+
+    @BeforeEach
+    @SuppressWarnings("unchecked")
+    void setUp() {
+        when(operator.transactional(any(Mono.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
 
     /**
-     * Test for {@link AccountUpdatedEventConsumer#accept(AccountServiceProto.AccountUpdatedEvent)}
-     * when creating a new data point.
+     * Test for {@link AccountUpdatedEventConsumer#apply(Flux)} when creating a new data point.
      */
     @Test
+    @SuppressWarnings("unchecked")
     void shouldSaveNewDataPoint() {
         when(conversionService.convert(GROCERY_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_GROCERY_AMOUNT);
         when(conversionService.convert(SALARY_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_SALARY_AMOUNT);
         when(conversionService.convert(SAVING_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_SAVING_AMOUNT);
 
-        when(dataPointRepository.update(any(DataPoint.class))).thenReturn(Optional.empty());
+        when(dataPointRepository.update(any(DataPoint.class))).thenReturn(Mono.empty());
         when(dataPointRepository.save(dataPointCaptor.capture()))
-                .thenAnswer((Answer<DataPoint>) invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        input.send(MessageBuilder.withPayload(stubEvent()).build(), DESTINATION_NAME);
+        consumer.apply(stubEvents())
+                .as(StepVerifier::create)
+                .verifyComplete();
 
         assertThat(dataPointCaptor.getValue().getAccountName()).isEqualTo(ACCOUNT_NAME);
         assertThat(dataPointCaptor.getValue().getDate()).isEqualTo(LocalDate.now());
@@ -122,22 +110,26 @@ class AccountUpdatedEventConsumerTest {
                 new SimpleEntry<>(StatisticalMetric.INCOMES_AMOUNT, NORMALIZED_SALARY_AMOUNT),
                 new SimpleEntry<>(StatisticalMetric.SAVING_AMOUNT, NORMALIZED_SAVING_AMOUNT)
         );
+
+        verify(operator).transactional(any(Mono.class));
     }
 
     /**
-     * Test for {@link AccountUpdatedEventConsumer#accept(AccountServiceProto.AccountUpdatedEvent)}
-     * when updating an existing data point.
+     * Test for {@link AccountUpdatedEventConsumer#apply(Flux)} when updating an existing data point.
      */
     @Test
+    @SuppressWarnings("unchecked")
     void shouldUpdateExistingDataPoint() {
         when(conversionService.convert(GROCERY_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_GROCERY_AMOUNT);
         when(conversionService.convert(SALARY_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_SALARY_AMOUNT);
         when(conversionService.convert(SAVING_AMOUNT, BASE_CURRENCY)).thenReturn(CONVERTED_SAVING_AMOUNT);
 
         when(dataPointRepository.update(dataPointCaptor.capture()))
-                .thenAnswer((Answer) invocation -> Optional.of(invocation.getArgument(0)));
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        input.send(MessageBuilder.withPayload(stubEvent()).build(), DESTINATION_NAME);
+        consumer.apply(stubEvents())
+                .as(StepVerifier::create)
+                .verifyComplete();
 
         assertThat(dataPointCaptor.getValue().getAccountName()).isEqualTo(ACCOUNT_NAME);
         assertThat(dataPointCaptor.getValue().getDate()).isEqualTo(LocalDate.now());
@@ -154,29 +146,31 @@ class AccountUpdatedEventConsumerTest {
         );
 
         verify(dataPointRepository, never()).save(any(DataPoint.class));
+        verify(operator).transactional(any(Mono.class));
     }
 
-    private AccountServiceProto.AccountUpdatedEvent stubEvent() {
-        AccountServiceProto.Item grocery = AccountServiceProto.Item.newBuilder()
+    private Flux<AccountServiceProto.AccountUpdatedEvent> stubEvents() {
+        var grocery = AccountServiceProto.Item.newBuilder()
                 .setType(AccountServiceProto.ItemType.EXPENSE)
                 .setTitle(GROCERY)
                 .setMoney(GROCERY_PROTO_AMOUNT)
                 .setPeriod(AccountServiceProto.TimePeriod.DAY)
                 .build();
-        AccountServiceProto.Item salary = AccountServiceProto.Item.newBuilder()
+        var salary = AccountServiceProto.Item.newBuilder()
                 .setType(AccountServiceProto.ItemType.INCOME)
                 .setTitle(SALARY)
                 .setMoney(SALARY_PROTO_AMOUNT)
                 .setPeriod(AccountServiceProto.TimePeriod.YEAR)
                 .build();
-        AccountServiceProto.Saving saving = AccountServiceProto.Saving.newBuilder()
+        var saving = AccountServiceProto.Saving.newBuilder()
                 .setMoney(SAVING_PROTO_AMOUNT)
                 .build();
-        return AccountServiceProto.AccountUpdatedEvent.newBuilder()
+        var event = AccountServiceProto.AccountUpdatedEvent.newBuilder()
                 .setAccountName(ACCOUNT_NAME)
                 .addItems(grocery)
                 .addItems(salary)
                 .setSaving(saving)
                 .build();
+        return Flux.just(event);
     }
 }

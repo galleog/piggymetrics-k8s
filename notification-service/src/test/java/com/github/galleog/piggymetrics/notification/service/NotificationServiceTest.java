@@ -21,9 +21,6 @@ import com.github.galleog.piggymetrics.notification.domain.NotificationSettings;
 import com.github.galleog.piggymetrics.notification.domain.NotificationType;
 import com.github.galleog.piggymetrics.notification.domain.Recipient;
 import com.github.galleog.piggymetrics.notification.repository.RecipientRepository;
-import com.google.common.collect.ImmutableList;
-import io.grpc.ManagedChannel;
-import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,8 +30,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
@@ -67,25 +64,25 @@ class NotificationServiceTest {
         accountService = spy(new ReactorAccountServiceGrpc.AccountServiceImplBase() {
         });
 
-        Server server = InProcessServerBuilder.forName(NotificationService.ACCOUNT_SERVICE)
+        var server = InProcessServerBuilder.forName(NotificationService.ACCOUNT_SERVICE)
                 .directExecutor()
                 .addService(accountService)
                 .build();
         resources.register(server.start(), Duration.ofSeconds(1));
-        ManagedChannel channel = InProcessChannelBuilder.forName(NotificationService.ACCOUNT_SERVICE)
+        var channel = InProcessChannelBuilder.forName(NotificationService.ACCOUNT_SERVICE)
                 .directExecutor()
                 .build();
         resources.register(channel, Duration.ofSeconds(1));
 
-        notificationService = new NotificationService(Schedulers.immediate(), recipientRepository, emailService);
+        notificationService = new NotificationService(recipientRepository, emailService);
         notificationService.accountServiceStub = ReactorAccountServiceGrpc.newReactorStub(channel);
 
-        NotificationSettings backup = NotificationSettings.builder()
+        var backup = NotificationSettings.builder()
                 .active(true)
                 .frequency(Frequency.MONTHLY)
                 .notifyDate(date)
                 .build();
-        NotificationSettings remind = NotificationSettings.builder()
+        var remind = NotificationSettings.builder()
                 .active(true)
                 .frequency(Frequency.WEEKLY)
                 .notifyDate(date)
@@ -102,7 +99,9 @@ class NotificationServiceTest {
                 .build();
 
         when(recipientRepository.readyToNotify(any(NotificationType.class), any(LocalDate.class)))
-                .thenReturn(ImmutableList.of(failed, successful));
+                .thenReturn(Flux.just(failed, successful));
+        when(recipientRepository.update(any(Recipient.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
     }
 
     /**
@@ -125,12 +124,14 @@ class NotificationServiceTest {
         }));
         verify(recipientRepository, never()).update(failed);
 
-        StepVerifier.create(getAccountRequestCaptor.getAllValues().get(0))
+        getAccountRequestCaptor.getAllValues().get(0)
+                .as(StepVerifier::create)
                 .expectNextMatches(request -> {
                     assertThat(request.getName()).isEqualTo(FAILED);
                     return true;
                 }).verifyComplete();
-        StepVerifier.create(getAccountRequestCaptor.getAllValues().get(1))
+        getAccountRequestCaptor.getAllValues().get(1)
+                .as(StepVerifier::create)
                 .expectNextMatches(request -> {
                     assertThat(request.getName()).isEqualTo(SUCCESSFUL);
                     return true;

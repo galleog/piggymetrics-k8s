@@ -77,7 +77,8 @@ class NotificationRequestRouterTest extends BaseRouterTest {
                     );
                 });
 
-        StepVerifier.create(requestCaptor.getValue())
+        requestCaptor.getValue()
+                .as(StepVerifier::create)
                 .expectNextMatches(req -> USERNAME.equals(req.getUserName()))
                 .verifyComplete();
     }
@@ -96,7 +97,8 @@ class NotificationRequestRouterTest extends BaseRouterTest {
                 .exchange()
                 .expectStatus().isNotFound();
 
-        StepVerifier.create(requestCaptor.getValue())
+        requestCaptor.getValue()
+                .as(StepVerifier::create)
                 .expectNextMatches(req -> USERNAME.equals(req.getUserName()))
                 .verifyComplete();
     }
@@ -142,7 +144,8 @@ class NotificationRequestRouterTest extends BaseRouterTest {
                     );
                 });
 
-        StepVerifier.create(recipientCaptor.getValue())
+        recipientCaptor.getValue()
+                .as(StepVerifier::create)
                 .expectNextMatches(recipient -> {
                     assertThat(recipient.getUserName()).isEqualTo(USERNAME);
                     assertThat(recipient.getEmail()).isEqualTo(EMAIL);

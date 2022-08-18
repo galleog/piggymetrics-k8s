@@ -7,108 +7,103 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.github.galleog.piggymetrics.account.AccountApplication;
-import com.github.galleog.piggymetrics.account.config.ReactorTestConfig;
 import com.github.galleog.piggymetrics.account.domain.Account;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
-import com.github.galleog.piggymetrics.auth.grpc.UserRegisteredEventProto.UserRegisteredEvent;
-import net.devh.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration;
-import net.devh.boot.grpc.server.autoconfigure.GrpcServerFactoryAutoConfiguration;
+import com.github.galleog.piggymetrics.auth.grpc.UserRegisteredEventProto;
 import org.javamoney.moneta.Money;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.stubbing.Answer;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.jooq.JooqAutoConfiguration;
-import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
-import org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.cloud.stream.binder.test.InputDestination;
-import org.springframework.cloud.stream.binder.test.TestChannelBinderConfiguration;
-import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
  * Tests for {@link UserRegisteredEventConsumer}.
+ *
+ * @author Oleg_Galkin
  */
-@ActiveProfiles("test")
-@ExtendWith({SpringExtension.class, MockitoExtension.class})
-@ImportAutoConfiguration(exclude = {
-        JooqAutoConfiguration.class,
-        LiquibaseAutoConfiguration.class,
-        KafkaAutoConfiguration.class,
-        GrpcServerAutoConfiguration.class,
-        GrpcServerFactoryAutoConfiguration.class,
-})
-@SpringBootTest(classes = {
-        AccountApplication.class,
-        ReactorTestConfig.class,
-        TestChannelBinderConfiguration.class
-})
+@ExtendWith(MockitoExtension.class)
 class UserRegisteredEventConsumerTest {
-    private static final String DESTINATION_NAME = "user-events";
     private static final String USERNAME = "test";
-    private static final UserRegisteredEvent EVENT = UserRegisteredEvent.newBuilder()
-            .setUserId(UUID.randomUUID().toString())
-            .setUserName(USERNAME)
-            .setEmail("test@example.com")
-            .build();
+    private static final Flux<UserRegisteredEventProto.UserRegisteredEvent> EVENTS = Flux.just(
+            UserRegisteredEventProto.UserRegisteredEvent.newBuilder()
+                    .setUserId(UUID.randomUUID().toString())
+                    .setUserName(USERNAME)
+                    .setEmail("test@example.com")
+                    .build()
+    );
 
-    @Autowired
-    private InputDestination input;
-
-    @MockBean
+    @Mock
     private AccountRepository accountRepository;
+    @Mock
+    private TransactionalOperator operator;
     @Captor
     private ArgumentCaptor<Account> accountCaptor;
+    @InjectMocks
+    private UserRegisteredEventConsumer consumer;
+
+    @BeforeEach
+    @SuppressWarnings("unchecked")
+    void setUp() {
+        when(operator.transactional(any(Mono.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
 
     /**
-     * Test for {@link UserRegisteredEventConsumer#accept(UserRegisteredEvent)}.
+     * Test for {@link UserRegisteredEventConsumer#apply(Flux)}.
      */
     @Test
+    @SuppressWarnings("unchecked")
     void shouldCreateAccount() {
-        when(accountRepository.getByName(USERNAME)).thenReturn(Optional.empty());
+        when(accountRepository.getByName(USERNAME)).thenReturn(Mono.empty());
         when(accountRepository.save(accountCaptor.capture()))
-                .thenAnswer((Answer<Account>) invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        input.send(MessageBuilder.withPayload(EVENT).build(), DESTINATION_NAME);
+        consumer.apply(EVENTS)
+                .as(StepVerifier::create)
+                .verifyComplete();
 
         assertThat(accountCaptor.getValue().getName()).isEqualTo(USERNAME);
         assertThat(accountCaptor.getValue().getSaving()).extracting(
                 Saving::getMoneyAmount, Saving::getInterest, Saving::isDeposit, Saving::isCapitalization
         ).containsExactly(Money.of(BigDecimal.ZERO, BASE_CURRENCY), BigDecimal.ZERO, false, false);
         assertThat(accountCaptor.getValue().getItems()).isEmpty();
+
+        verify(operator).transactional(any(Mono.class));
     }
 
     /**
-     * Test for {@link UserRegisteredEventConsumer#accept(UserRegisteredEvent)}
-     * when an account with the same name already exists.
+     * Test for {@link UserRegisteredEventConsumer#apply(Flux)} when an account with the same name already exists.
      */
     @Test
+    @SuppressWarnings("unchecked")
     void shouldNotCreateAccountWhenAlreadyExists() {
-        Saving saving = Saving.builder()
+        var saving = Saving.builder()
                 .moneyAmount(Money.of(BigDecimal.TEN, BASE_CURRENCY))
                 .interest(BigDecimal.ZERO)
                 .build();
-        Account account = Account.builder()
+        var account = Account.builder()
                 .name(USERNAME)
                 .saving(saving)
                 .build();
-        when(accountRepository.getByName(USERNAME)).thenReturn(Optional.of(account));
+        when(accountRepository.getByName(USERNAME)).thenReturn(Mono.just(account));
 
-        input.send(MessageBuilder.withPayload(EVENT).build(), DESTINATION_NAME);
+        consumer.apply(EVENTS)
+                .as(StepVerifier::create)
+                .verifyComplete();
 
         verify(accountRepository, never()).save(any(Account.class));
+        verify(operator).transactional(any(Mono.class));
     }
 }

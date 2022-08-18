@@ -19,16 +19,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.lang.NonNull;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
+import reactor.core.publisher.Sinks;
 
 import javax.money.MonetaryException;
 import java.time.DateTimeException;
-import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 /**
@@ -41,53 +38,43 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
     private static final Converter<Account, AccountServiceProto.Account> ACCOUNT_CONVERTER = new AccountConverter();
     private static final Converter<Item, AccountServiceProto.Item> ITEM_CONVERTER = new ItemConverter();
     private static final Converter<Saving, AccountServiceProto.Saving> SAVING_CONVERTER = new SavingConverter();
-    private static final String ACCOUNT_EVENT_OUTPUT = "account-event-out";
 
-    private final Scheduler jdbcScheduler;
     private final AccountRepository repository;
-    private final StreamBridge streamBridge;
+    private final Sinks.Many<AccountServiceProto.Account> sink;
 
     @Override
     public Mono<AccountServiceProto.Account> getAccount(Mono<GetAccountRequest> request) {
-        return request.flatMap(req ->
-                async(() ->
-                        repository.getByName(req.getName())
-                                .orElseThrow(() -> Status.NOT_FOUND
-                                        .withDescription("Account for user '" + req.getName() + "' not found")
-                                        .asRuntimeException())
-                ).doOnNext(account -> logger.debug("Account for user '{}' found", req.getName()))
-        ).map(ACCOUNT_CONVERTER::convert);
-    }
-
-    @Override
-    public Mono<AccountServiceProto.Account> updateAccount(Mono<AccountServiceProto.Account> request) {
-        return request.flatMap(account -> async(() -> doUpdateAccount(account)))
+        return request.map(GetAccountRequest::getName)
+                .flatMap(this::doGetAccount)
                 .map(ACCOUNT_CONVERTER::convert);
     }
 
+    @Override
     @Transactional
-    private Account doUpdateAccount(AccountServiceProto.Account account) {
-        Account updated = repository.update(ACCOUNT_CONVERTER.reverse().convert(account))
-                .orElseThrow(() -> Status.NOT_FOUND
-                        .withDescription("Account for user '" + account.getName() + "' not found")
-                        .asRuntimeException());
-
-        // send an event on the account update
-        AccountServiceProto.AccountUpdatedEvent event = AccountServiceProto.AccountUpdatedEvent.newBuilder()
-                .setAccountName(account.getName())
-                .addAllItems(account.getItemsList())
-                .setSaving(account.getSaving())
-                .setNote(account.getNote())
-                .build();
-        streamBridge.send(ACCOUNT_EVENT_OUTPUT, MessageBuilder.withPayload(event).build());
-
-        logger.info("Account for user '{}' updated", account.getName());
-        return updated;
+    public Mono<AccountServiceProto.Account> updateAccount(Mono<AccountServiceProto.Account> request) {
+        return request.map(account -> ACCOUNT_CONVERTER.reverse().convert(account))
+                .flatMap(this::doUpdateAccount);
     }
 
-    private <T> Mono<T> async(Callable<? extends T> supplier) {
-        return Mono.<T>fromCallable(supplier)
-                .subscribeOn(jdbcScheduler);
+    private Mono<Account> doGetAccount(String name) {
+        return repository.getByName(name)
+                .doOnNext(account -> logger.debug("Account for user '{}' found", name))
+                .switchIfEmpty(Mono.error(() -> Status.NOT_FOUND
+                        .withDescription("Account for user '" + name + "' not found")
+                        .asRuntimeException()));
+    }
+
+    private Mono<AccountServiceProto.Account> doUpdateAccount(Account account) {
+        return repository.update(account)
+                .switchIfEmpty(Mono.error(() -> Status.NOT_FOUND
+                        .withDescription("Account for user '" + account.getName() + "' not found")
+                        .asRuntimeException()))
+                .map(ACCOUNT_CONVERTER::convert)
+                .doOnNext(a -> {
+                    // send an event on the account update
+                    sink.tryEmitNext(a).orThrow();
+                    logger.info("Account for user '{}' updated", a.getName());
+                });
     }
 
     private static final class AccountConverter extends Converter<Account, AccountServiceProto.Account> {

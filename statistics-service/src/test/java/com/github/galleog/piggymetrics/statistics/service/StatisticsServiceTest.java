@@ -1,5 +1,6 @@
 package com.github.galleog.piggymetrics.statistics.service;
 
+import static com.github.galleog.piggymetrics.statistics.domain.DataPoint.updateStatistics;
 import static com.github.galleog.protobuf.java.type.converter.Converters.bigDecimalConverter;
 import static com.github.galleog.protobuf.java.type.converter.Converters.dateConverter;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,19 +16,18 @@ import com.github.galleog.piggymetrics.statistics.repository.DataPointRepository
 import com.github.galleog.protobuf.java.type.BigDecimalProto;
 import com.google.common.collect.ImmutableList;
 import io.grpc.Status;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.stream.Stream;
 
 /**
  * Tests for {@link StatisticsService}.
@@ -53,24 +53,23 @@ class StatisticsServiceTest {
 
     @Mock
     private DataPointRepository repository;
+    @InjectMocks
     private StatisticsService statisticsService;
-
-    @BeforeEach
-    void setUp() {
-        statisticsService = new StatisticsService(Schedulers.immediate(), repository);
-    }
 
     /**
      * Test for {@link StatisticsService#listDataPoints(Mono)}.
      */
     @Test
     void shouldListDataPoints() {
-        when(repository.listByAccountName(ACCOUNT_NAME)).thenReturn(Stream.of(
-                stubDataPoint(DATE_1, SAVING_AMOUNT, salary()),
-                stubDataPoint(DATE_2, SAVING_AMOUNT, grocery(), vacation())
-        ));
+        when(repository.listByAccountName(ACCOUNT_NAME)).thenReturn(
+                Flux.just(
+                        stubDataPoint(DATE_1, SAVING_AMOUNT, salary()),
+                        stubDataPoint(DATE_2, SAVING_AMOUNT, grocery(), vacation())
+                )
+        );
 
-        StepVerifier.create(statisticsService.listDataPoints(stubListDataPointsRequest()))
+        statisticsService.listDataPoints(stubListDataPointsRequest())
+                .as(StepVerifier::create)
                 .expectNextMatches(dp -> {
                     assertThat(dp.getAccountName()).isEqualTo(ACCOUNT_NAME);
                     assertThat(dp.getDate()).isEqualTo(dateConverter().convert(DATE_1));
@@ -90,7 +89,6 @@ class StatisticsServiceTest {
                     );
                     return true;
                 }).expectNextMatches(dp -> {
-            // @formatter:off
                     assertThat(dp.getAccountName()).isEqualTo(ACCOUNT_NAME);
                     assertThat(dp.getDate()).isEqualTo(dateConverter().convert(DATE_2));
                     assertThat(dp.getMetricsList()).extracting(
@@ -110,7 +108,6 @@ class StatisticsServiceTest {
                     );
                     return true;
                 }).verifyComplete();
-            // @formatter:on
     }
 
     /**
@@ -118,9 +115,10 @@ class StatisticsServiceTest {
      */
     @Test
     void shouldFailToListDataPoints() {
-        when(repository.listByAccountName(ACCOUNT_NAME)).thenReturn(Stream.empty());
+        when(repository.listByAccountName(ACCOUNT_NAME)).thenReturn(Flux.empty());
 
-        StepVerifier.create(statisticsService.listDataPoints(stubListDataPointsRequest()))
+        statisticsService.listDataPoints(stubListDataPointsRequest())
+                .as(StepVerifier::create)
                 .expectErrorMatches(e -> {
                     assertThat(Status.fromThrowable(e).getCode()).isEqualTo(Status.Code.NOT_FOUND);
                     assertThat(e.getCause()).isNull();
@@ -159,12 +157,12 @@ class StatisticsServiceTest {
     }
 
     private DataPoint stubDataPoint(LocalDate date, BigDecimal saving, ItemMetric... metrics) {
-        DataPoint dataPoint = DataPoint.builder()
+        var dataPoint = updateStatistics(ACCOUNT_NAME, ImmutableList.copyOf(metrics), saving);
+        return DataPoint.builder()
                 .accountName(ACCOUNT_NAME)
                 .date(date)
-                .metrics(ImmutableList.copyOf(metrics))
+                .metrics(dataPoint.getMetrics())
+                .statistics(dataPoint.getStatistics())
                 .build();
-        dataPoint.updateStatistics(dataPoint.getMetrics(), saving);
-        return dataPoint;
     }
 }

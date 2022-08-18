@@ -14,71 +14,40 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.asarkar.grpc.test.GrpcCleanupExtension;
-import com.asarkar.grpc.test.Resources;
-import com.github.galleog.piggymetrics.account.AccountApplication;
-import com.github.galleog.piggymetrics.account.config.GrpcTestConfig;
-import com.github.galleog.piggymetrics.account.config.ReactorTestConfig;
 import com.github.galleog.piggymetrics.account.domain.Account;
 import com.github.galleog.piggymetrics.account.domain.Item;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
-import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.AccountUpdatedEvent;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.GetAccountRequest;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.ItemType;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.TimePeriod;
-import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
-import io.grpc.ManagedChannel;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import io.grpc.inprocess.InProcessChannelBuilder;
 import org.javamoney.moneta.Money;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.stubbing.Answer;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.jooq.JooqAutoConfiguration;
-import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
-import org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.cloud.stream.binder.test.OutputDestination;
-import org.springframework.cloud.stream.binder.test.TestChannelBinderConfiguration;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
-import java.time.Duration;
-import java.util.Optional;
 
 /**
  * Tests for {@link AccountService}.
  */
-@ActiveProfiles("test")
-@ExtendWith({SpringExtension.class, GrpcCleanupExtension.class})
-@ImportAutoConfiguration(exclude = {
-        JooqAutoConfiguration.class,
-        KafkaAutoConfiguration.class,
-        LiquibaseAutoConfiguration.class
-})
-@SpringBootTest(classes = {
-        AccountApplication.class,
-        GrpcTestConfig.class,
-        ReactorTestConfig.class,
-        TestChannelBinderConfiguration.class
-})
+@ExtendWith(MockitoExtension.class)
 class AccountServiceTest {
-    private static final String BINDING_NAME = "account-events";
     private static final String USD = "USD";
     private static final String NAME = "test";
-    private static final GetAccountRequest GET_ACCOUNT_REQUEST = GetAccountRequest.newBuilder()
-            .setName(NAME)
-            .build();
+    private static final Mono<GetAccountRequest> GET_ACCOUNT_REQUEST = Mono.just(
+            GetAccountRequest.newBuilder()
+                    .setName(NAME)
+                    .build()
+    );
     private static final String NOTE = "note";
     private static final Item GROCERY = Item.builder()
             .title("Grocery")
@@ -99,31 +68,23 @@ class AccountServiceTest {
             .interest(BigDecimal.ZERO)
             .build();
 
-    @MockBean
-    private AccountRepository repository;
-
-    @Autowired
-    private OutputDestination output;
-    private ReactorAccountServiceGrpc.ReactorAccountServiceStub accountServiceStub;
-
-    @BeforeEach
-    void setUp(Resources resources) {
-        ManagedChannel channel = InProcessChannelBuilder.forName(GrpcTestConfig.SERVICE_NAME)
-                .directExecutor()
-                .build();
-        resources.register(channel, Duration.ofSeconds(1));
-        accountServiceStub = ReactorAccountServiceGrpc.newReactorStub(channel);
-    }
+    @Mock
+    private AccountRepository accountRepository;
+    @Mock
+    private Sinks.Many<AccountServiceProto.Account> sink;
+    @InjectMocks
+    private AccountService accountService;
 
     /**
      * Test for {@link AccountService#getAccount(Mono)}.
      */
     @Test
     void shouldGetAccount() {
-        Account account = stubAccount();
-        when(repository.getByName(NAME)).thenReturn(Optional.of(account));
+        var account = stubAccount();
+        when(accountRepository.getByName(NAME)).thenReturn(Mono.just(account));
 
-        StepVerifier.create(accountServiceStub.getAccount(GET_ACCOUNT_REQUEST))
+        accountService.getAccount(GET_ACCOUNT_REQUEST)
+                .as(StepVerifier::create)
                 .expectNextMatches(a -> {
                     assertThat(a.getName()).isEqualTo(NAME);
                     assertThat(a.getItemsList()).extracting(
@@ -164,14 +125,14 @@ class AccountServiceTest {
      */
     @Test
     void shouldFailToFindAccountWhenNotFound() {
-        when(repository.getByName(NAME)).thenReturn(Optional.empty());
+        when(accountRepository.getByName(NAME)).thenReturn(Mono.empty());
 
-        StepVerifier.create(accountServiceStub.getAccount(GET_ACCOUNT_REQUEST))
-                .expectErrorMatches(t -> {
+        accountService.getAccount(GET_ACCOUNT_REQUEST)
+                .as(StepVerifier::create)
+                .verifyErrorSatisfies(t -> {
                     assertThat(t).isInstanceOf(StatusRuntimeException.class);
                     assertThat(Status.fromThrowable(t).getCode()).isEqualTo(Status.Code.NOT_FOUND);
-                    return true;
-                }).verify();
+                });
     }
 
     /**
@@ -179,19 +140,20 @@ class AccountServiceTest {
      */
     @Test
     void shouldUpdateAccount() {
-        when(repository.update(any(Account.class)))
-                .thenAnswer((Answer) invocation -> Optional.of(invocation.getArgument(0)));
+        when(accountRepository.update(any(Account.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+        when(sink.tryEmitNext(any(AccountServiceProto.Account.class))).thenReturn(Sinks.EmitResult.OK);
 
-        Money savingAmount = Money.of(1500, USD);
-        BigDecimal interest = BigDecimal.valueOf(3.32);
-        AccountServiceProto.Saving saving = AccountServiceProto.Saving.newBuilder()
+        var savingAmount = Money.of(1500, USD);
+        var interest = BigDecimal.valueOf(3.32);
+        var saving = AccountServiceProto.Saving.newBuilder()
                 .setMoney(moneyConverter().convert(savingAmount))
                 .setInterest(bigDecimalConverter().convert(interest))
                 .setDeposit(true)
                 .build();
 
-        Money rentAmount = Money.of(1200, USD);
-        AccountServiceProto.Item rent = AccountServiceProto.Item.newBuilder()
+        var rentAmount = Money.of(1200, USD);
+        var rent = AccountServiceProto.Item.newBuilder()
                 .setType(ItemType.EXPENSE)
                 .setTitle("Rent")
                 .setMoney(moneyConverter().convert(rentAmount))
@@ -199,8 +161,8 @@ class AccountServiceTest {
                 .setIcon("home")
                 .build();
 
-        Money mealAmount = Money.of(20, USD);
-        AccountServiceProto.Item meal = AccountServiceProto.Item.newBuilder()
+        var mealAmount = Money.of(20, USD);
+        var meal = AccountServiceProto.Item.newBuilder()
                 .setType(ItemType.EXPENSE)
                 .setTitle("Meal")
                 .setMoney(moneyConverter().convert(mealAmount))
@@ -208,7 +170,7 @@ class AccountServiceTest {
                 .setIcon("meal")
                 .build();
 
-        AccountServiceProto.Account account = AccountServiceProto.Account.newBuilder()
+        var account = AccountServiceProto.Account.newBuilder()
                 .setName(NAME)
                 .addItems(rent)
                 .addItems(meal)
@@ -216,17 +178,12 @@ class AccountServiceTest {
                 .setNote(NOTE)
                 .build();
 
-        StepVerifier.create(accountServiceStub.updateAccount(account))
-                .expectNextMatches(a -> {
-                    assertThat(a.getName()).isEqualTo(NAME);
-                    assertThat(a.getItemsList()).containsExactlyInAnyOrder(rent, meal);
-                    assertThat(a.getSaving()).isEqualTo(saving);
-                    assertThat(a.getUpdateTime().isInitialized()).isTrue();
-                    assertThat(a.getNote()).isEqualTo(NOTE);
-                    return true;
-                }).verifyComplete();
+        accountService.updateAccount(Mono.just(account))
+                .as(StepVerifier::create)
+                .expectNextMatches(a -> assertAccount(a, saving, rent, meal))
+                .verifyComplete();
 
-        verify(repository).update(argThat(a -> {
+        verify(accountRepository).update(argThat(a -> {
             assertThat(a.getName()).isEqualTo(NAME);
             assertThat(a.getItems()).extracting(
                     Item::getTitle, Item::getMoneyAmount, Item::getPeriod, Item::getIcon, Item::getType
@@ -242,16 +199,7 @@ class AccountServiceTest {
             return true;
         }));
 
-        assertThat(output.receive(0, BINDING_NAME).getPayload()).isEqualTo(
-                AccountUpdatedEvent.newBuilder()
-                        .setAccountName(NAME)
-                        .addItems(rent)
-                        .addItems(meal)
-                        .setSaving(saving)
-                        .setNote(NOTE)
-                        .build()
-                        .toByteArray()
-        );
+        verify(sink).tryEmitNext(argThat(a -> assertAccount(a, saving, rent, meal)));
     }
 
     /**
@@ -259,26 +207,26 @@ class AccountServiceTest {
      */
     @Test
     void shouldFailToUpdateAccountWhenNotFound() {
-        when(repository.update(any(Account.class))).thenReturn(Optional.empty());
+        when(accountRepository.update(any(Account.class))).thenReturn(Mono.empty());
 
-        Money savingAmount = Money.of(BigDecimal.ZERO, USD);
-        AccountServiceProto.Saving saving = AccountServiceProto.Saving.newBuilder()
+        var savingAmount = Money.of(BigDecimal.ZERO, USD);
+        var saving = AccountServiceProto.Saving.newBuilder()
                 .setMoney(moneyConverter().convert(savingAmount))
                 .setInterest(bigDecimalConverter().convert(BigDecimal.ZERO))
                 .build();
-        AccountServiceProto.Account account = AccountServiceProto.Account.newBuilder()
+        var account = AccountServiceProto.Account.newBuilder()
                 .setName(NAME)
                 .setSaving(saving)
                 .build();
 
-        StepVerifier.create(accountServiceStub.updateAccount(account))
-                .expectErrorMatches(t -> {
+        accountService.updateAccount(Mono.just(account))
+                .as(StepVerifier::create)
+                .verifyErrorSatisfies(t -> {
                     assertThat(t).isInstanceOf(StatusRuntimeException.class);
                     assertThat(Status.fromThrowable(t).getCode()).isEqualTo(Status.Code.NOT_FOUND);
-                    return true;
-                }).verify();
+                });
 
-        assertThat(output.receive(0, BINDING_NAME)).isNull();
+        verify(sink, never()).tryEmitNext(any());
     }
 
     /**
@@ -286,23 +234,24 @@ class AccountServiceTest {
      */
     @Test
     void shouldFailToUpdateAccountWhenDataInvalid() {
-        AccountServiceProto.Saving saving = AccountServiceProto.Saving.newBuilder()
+        var saving = AccountServiceProto.Saving.newBuilder()
                 .setDeposit(true)
                 .build();
-        AccountServiceProto.Account account = AccountServiceProto.Account.newBuilder()
+        var account = AccountServiceProto.Account.newBuilder()
                 .setName(NAME)
                 .setSaving(saving)
                 .build();
 
-        StepVerifier.create(accountServiceStub.updateAccount(account))
+        accountService.updateAccount(Mono.just(account))
+                .as(StepVerifier::create)
                 .expectErrorMatches(t -> {
                     assertThat(t).isInstanceOf(StatusRuntimeException.class);
                     assertThat(Status.fromThrowable(t).getCode()).isEqualTo(Status.Code.INVALID_ARGUMENT);
                     return true;
                 }).verify();
 
-        verify(repository, never()).update(any());
-        assertThat(output.receive(0, BINDING_NAME)).isNull();
+        verify(accountRepository, never()).update(any());
+        verify(sink, never()).tryEmitNext(any());
     }
 
     private Account stubAccount() {
@@ -312,5 +261,15 @@ class AccountServiceTest {
                 .item(SALARY)
                 .saving(SAVING)
                 .build();
+    }
+
+    private boolean assertAccount(AccountServiceProto.Account account, AccountServiceProto.Saving saving,
+                                  AccountServiceProto.Item... items) {
+        assertThat(account.getName()).isEqualTo(NAME);
+        assertThat(account.getItemsList()).containsExactlyInAnyOrder(items);
+        assertThat(account.getSaving()).isEqualTo(saving);
+        assertThat(account.getUpdateTime().isInitialized()).isTrue();
+        assertThat(account.getNote()).isEqualTo(NOTE);
+        return true;
     }
 }

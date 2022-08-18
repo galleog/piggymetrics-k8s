@@ -2,28 +2,30 @@ package com.github.galleog.piggymetrics.notification.repository.jooq;
 
 import static com.github.galleog.piggymetrics.notification.domain.Tables.RECIPIENTS;
 import static com.github.galleog.piggymetrics.notification.domain.Tables.RECIPIENT_NOTIFICATIONS;
+import static com.google.common.collect.ImmutableMap.toImmutableMap;
+import static org.jooq.impl.DSL.select;
 
+import com.github.galleog.piggymetrics.notification.domain.Frequency;
 import com.github.galleog.piggymetrics.notification.domain.NotificationSettings;
 import com.github.galleog.piggymetrics.notification.domain.NotificationType;
 import com.github.galleog.piggymetrics.notification.domain.Recipient;
-import com.github.galleog.piggymetrics.notification.domain.tables.records.RecipientNotificationsRecord;
 import com.github.galleog.piggymetrics.notification.domain.tables.records.RecipientsRecord;
 import com.github.galleog.piggymetrics.notification.repository.RecipientRepository;
-import com.google.common.collect.ImmutableList;
+import com.github.galleog.r2dbc.jooq.transaction.TransactionAwareJooqWrapper;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.Validate;
-import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.jooq.Result;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Implementation of {@link RecipientRepository} using <a href="https://www.jooq.org/">jOOQ</a>.
@@ -31,93 +33,147 @@ import java.util.Optional;
 @Repository
 @RequiredArgsConstructor
 public class JooqRecipientRepository implements RecipientRepository {
-    private final DSLContext dsl;
+    private final TransactionAwareJooqWrapper wrapper;
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Recipient> getByUsername(@NonNull String username) {
+    public Mono<Recipient> getByUsername(@NonNull String username) {
         Validate.notNull(username);
-
-        Result<Record> records = dsl.select()
-                .from(RECIPIENTS)
-                .leftJoin(RECIPIENT_NOTIFICATIONS).on(RECIPIENT_NOTIFICATIONS.USERNAME.eq(RECIPIENTS.USERNAME))
-                .where(RECIPIENTS.USERNAME.eq(username))
-                .fetch();
-        return records.isEmpty() ? Optional.empty() : Optional.of(toRecipient(records));
+        return wrapper.withDSLContextMany(ctx ->
+                        ctx.select()
+                                .from(RECIPIENTS)
+                                .leftJoin(RECIPIENT_NOTIFICATIONS).on(RECIPIENT_NOTIFICATIONS.USERNAME.eq(RECIPIENTS.USERNAME))
+                                .where(RECIPIENTS.USERNAME.eq(username))
+                ).collectList()
+                .mapNotNull(this::toRecipient);
     }
 
     @Override
     @Transactional
-    public void save(@NonNull Recipient recipient) {
+    public Mono<Recipient> save(@NonNull Recipient recipient) {
         Validate.notNull(recipient);
-
-        RecipientsRecord record = dsl.newRecord(RECIPIENTS);
-        record.from(recipient);
-        record.insert();
-
-        insertNotifications(recipient);
+        return insertRecipientSql(recipient)
+                .map(record ->
+                        Recipient.builder()
+                                .username(record.getUsername())
+                                .email(record.getEmail())
+                ).flatMap(builder ->
+                        insertNotifications(recipient)
+                                .map(notifications -> builder.notifications(notifications).build())
+                );
     }
 
     @Override
     @Transactional
-    public Optional<Recipient> update(@NonNull Recipient recipient) {
+    public Mono<Recipient> update(@NonNull Recipient recipient) {
         Validate.notNull(recipient);
-
-        RecipientsRecord record = dsl.selectFrom(RECIPIENTS)
-                .where(RECIPIENTS.USERNAME.eq(recipient.getUsername()))
-                .fetchOne();
-        if (record == null) {
-            return Optional.empty();
-        }
-
-        record.setEmail(recipient.getEmail());
-        record.update();
-
-        dsl.deleteFrom(RECIPIENT_NOTIFICATIONS)
-                .where(RECIPIENT_NOTIFICATIONS.USERNAME.eq(recipient.getUsername()))
-                .execute();
-
-        Map<NotificationType, NotificationSettings> notifications = insertNotifications(recipient).stream()
-                .collect(ImmutableMap.toImmutableMap(
-                        rec -> rec.get(RECIPIENT_NOTIFICATIONS.NOTIFICATION_TYPE),
-                        rec -> rec.into(NotificationSettings.class)
-                ));
-        return Optional.of(Recipient.builder()
-                .username(record.getUsername())
-                .email(record.getEmail())
-                .notifications(notifications)
-                .build());
+        return updateRecipientSql(recipient)
+                .map(record ->
+                        Recipient.builder()
+                                .username(record.getUsername())
+                                .email(record.getEmail())
+                ).flatMap(builder ->
+                        deleteNotificationsSql(recipient.getUsername())
+                                .map(i -> builder)
+                ).flatMap(builder ->
+                        insertNotifications(recipient)
+                                .map(notifications -> builder.notifications(notifications).build())
+                );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Recipient> readyToNotify(@NonNull NotificationType type, @NonNull LocalDate date) {
+    public Flux<Recipient> readyToNotify(@NonNull NotificationType type, @NonNull LocalDate date) {
         Validate.notNull(type);
         Validate.notNull(date);
 
-        Map<String, Result<Record>> records = dsl.select()
-                .from(RECIPIENTS)
-                .leftJoin(RECIPIENT_NOTIFICATIONS).on(RECIPIENT_NOTIFICATIONS.USERNAME.eq(RECIPIENTS.USERNAME))
-                .where(RECIPIENT_NOTIFICATIONS.NOTIFICATION_TYPE.eq(type))
-                .and(RECIPIENT_NOTIFICATIONS.ACTIVE.eq(true))
-                .and(RECIPIENT_NOTIFICATIONS.NOTIFY_DATE.isNull()
-                        .or((RECIPIENT_NOTIFICATIONS.NOTIFY_DATE.plus(RECIPIENT_NOTIFICATIONS.FREQUENCY).lessThan(date))))
-                .fetch()
-                .intoGroups(RECIPIENTS.USERNAME);
-        return records.values().stream()
-                .map(this::toRecipient)
-                .collect(ImmutableList.toImmutableList());
+        return readyToNotifySql(type, date)
+                .bufferUntilChanged(record -> record.get(RECIPIENTS.USERNAME))
+                .map(this::toRecipient);
     }
 
-    private Recipient toRecipient(Result<Record> records) {
-        Map<NotificationType, NotificationSettings> notifications = records.stream()
+    private Flux<Record> readyToNotifySql(NotificationType type, LocalDate date) {
+        return wrapper.withDSLContextMany(ctx ->
+                ctx.select()
+                        .from(RECIPIENTS)
+                        .leftJoin(RECIPIENT_NOTIFICATIONS).on(RECIPIENT_NOTIFICATIONS.USERNAME.eq(RECIPIENTS.USERNAME))
+                        .where(RECIPIENTS.USERNAME.in(
+                                select(RECIPIENTS.USERNAME).from(RECIPIENTS)
+                                        .join(RECIPIENT_NOTIFICATIONS)
+                                        .on(RECIPIENT_NOTIFICATIONS.USERNAME.eq(RECIPIENTS.USERNAME))
+                                        .where(RECIPIENT_NOTIFICATIONS.NOTIFICATION_TYPE.eq(type))
+                                        .and(RECIPIENT_NOTIFICATIONS.ACTIVE.eq(true))
+                                        .and(RECIPIENT_NOTIFICATIONS.NOTIFY_DATE.isNull()
+                                                .or((RECIPIENT_NOTIFICATIONS.NOTIFY_DATE.plus(RECIPIENT_NOTIFICATIONS.FREQUENCY)
+                                                        .lessThan(date))))
+                        ))
+        );
+    }
+
+    private Mono<RecipientsRecord> insertRecipientSql(Recipient recipient) {
+        return wrapper.withDSLContext(ctx ->
+                ctx.insertInto(RECIPIENTS)
+                        .columns(RECIPIENTS.USERNAME, RECIPIENTS.EMAIL)
+                        .values(recipient.getUsername(), recipient.getEmail())
+                        .returning()
+        );
+    }
+
+    private Mono<RecipientsRecord> updateRecipientSql(Recipient recipient) {
+        return wrapper.withDSLContext(ctx ->
+                ctx.update(RECIPIENTS)
+                        .set(RECIPIENTS.EMAIL, recipient.getEmail())
+                        .where(RECIPIENTS.USERNAME.eq(recipient.getUsername()))
+                        .returning()
+        );
+    }
+
+    private Mono<Map<NotificationType, NotificationSettings>> insertNotifications(Recipient recipient) {
+        return Flux.fromIterable(recipient.getNotifications().entrySet())
+                .flatMap(entry -> wrapper.withDSLContext(ctx ->
+                        ctx.insertInto(RECIPIENT_NOTIFICATIONS)
+                                .columns(
+                                        RECIPIENT_NOTIFICATIONS.USERNAME,
+                                        RECIPIENT_NOTIFICATIONS.NOTIFICATION_TYPE,
+                                        RECIPIENT_NOTIFICATIONS.ACTIVE,
+                                        RECIPIENT_NOTIFICATIONS.FREQUENCY,
+                                        RECIPIENT_NOTIFICATIONS.NOTIFY_DATE
+                                ).values(
+                                        recipient.getUsername(),
+                                        entry.getKey(),
+                                        entry.getValue().isActive(),
+                                        entry.getValue().getFrequency().getKey(),
+                                        entry.getValue().getNotifyDate()
+                                ).returning()
+                )).map(record ->
+                        Maps.immutableEntry(
+                                record.getNotificationType(),
+                                toNotificationSettings(record)
+                        )
+                ).collectList()
+                .map(ImmutableMap::copyOf);
+    }
+
+    private Mono<Integer> deleteNotificationsSql(String username) {
+        return wrapper.withDSLContext(ctx ->
+                ctx.deleteFrom(RECIPIENT_NOTIFICATIONS)
+                        .where(RECIPIENT_NOTIFICATIONS.USERNAME.eq(username))
+        );
+    }
+
+    private Recipient toRecipient(List<Record> records) {
+        if (records.isEmpty()) {
+            return null;
+        }
+
+        var notifications = records.stream()
                 .filter(r -> r.get(RECIPIENT_NOTIFICATIONS.USERNAME) != null)
-                .collect(ImmutableMap.toImmutableMap(
+                .collect(toImmutableMap(
                         r -> r.get(RECIPIENT_NOTIFICATIONS.NOTIFICATION_TYPE),
-                        r -> r.into(NotificationSettings.class)
+                        this::toNotificationSettings
                 ));
 
-        Record record = records.get(0);
+        var record = records.get(0);
         return Recipient.builder()
                 .username(record.get(RECIPIENTS.USERNAME))
                 .email(record.get(RECIPIENTS.EMAIL))
@@ -125,17 +181,11 @@ public class JooqRecipientRepository implements RecipientRepository {
                 .build();
     }
 
-    private List<RecipientNotificationsRecord> insertNotifications(Recipient recipient) {
-        return recipient.getNotifications().entrySet()
-                .stream()
-                .map(entry -> {
-                    RecipientNotificationsRecord record = dsl.newRecord(RECIPIENT_NOTIFICATIONS);
-                    record.from(entry.getValue());
-                    record.setUsername(recipient.getUsername());
-                    record.setNotificationType(entry.getKey());
-                    record.setFrequency(entry.getValue().getFrequency().getKey());
-                    record.insert();
-                    return record;
-                }).collect(ImmutableList.toImmutableList());
+    private NotificationSettings toNotificationSettings(Record record) {
+        return NotificationSettings.builder()
+                .active(record.get(RECIPIENT_NOTIFICATIONS.ACTIVE))
+                .frequency(Frequency.valueOf(record.get(RECIPIENT_NOTIFICATIONS.FREQUENCY)))
+                .notifyDate(record.get(RECIPIENT_NOTIFICATIONS.NOTIFY_DATE))
+                .build();
     }
 }

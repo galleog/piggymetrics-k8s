@@ -89,7 +89,8 @@ class AccountRequestRouterTest extends BaseRouterTest {
                     assertThat(account.getUpdateTime()).isEqualTo(UPDATE_TIME);
                 });
 
-        StepVerifier.create(getAccountRequestCaptor.getValue())
+        getAccountRequestCaptor.getValue()
+                .as(StepVerifier::create)
                 .expectNextMatches(value -> DEMO_ACCOUNT.equals(value.getName()))
                 .verifyComplete();
     }
@@ -107,7 +108,8 @@ class AccountRequestRouterTest extends BaseRouterTest {
                 .exchange()
                 .expectStatus().isOk();
 
-        StepVerifier.create(getAccountRequestCaptor.getValue())
+        getAccountRequestCaptor.getValue()
+                .as(StepVerifier::create)
                 .expectNextMatches(value -> ACCOUNT_NAME.equals(value.getName()))
                 .verifyComplete();
     }
@@ -126,7 +128,8 @@ class AccountRequestRouterTest extends BaseRouterTest {
                 .exchange()
                 .expectStatus().isNotFound();
 
-        StepVerifier.create(getAccountRequestCaptor.getValue())
+        getAccountRequestCaptor.getValue()
+                .as(StepVerifier::create)
                 .expectNextMatches(value -> ACCOUNT_NAME.equals(value.getName()))
                 .verifyComplete();
     }
@@ -175,7 +178,8 @@ class AccountRequestRouterTest extends BaseRouterTest {
                     assertThat(account.getUpdateTime()).isEqualTo(UPDATE_TIME);
                 });
 
-        StepVerifier.create(accountCaptor.getValue())
+        accountCaptor.getValue()
+                .as(StepVerifier::create)
                 .expectNextMatches(account -> {
                     assertThat(account.getName()).isEqualTo(ACCOUNT_NAME);
                     assertThat(account.getItemsList()).extracting(
@@ -233,7 +237,8 @@ class AccountRequestRouterTest extends BaseRouterTest {
                 .exchange()
                 .expectStatus().isNotFound();
 
-        StepVerifier.create(accountCaptor.getValue())
+        accountCaptor.getValue()
+                .as(StepVerifier::create)
                 .expectNextMatches(account -> ACCOUNT_NAME.equals(account.getName()))
                 .verifyComplete();
     }

@@ -9,9 +9,11 @@ import com.github.galleog.piggymetrics.notification.repository.RecipientReposito
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Consumer of events on new user registrations.
@@ -19,30 +21,37 @@ import java.util.function.Consumer;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class UserRegisteredEventConsumer implements Consumer<UserRegisteredEvent> {
+public class UserRegisteredEventConsumer implements Function<Flux<UserRegisteredEvent>, Mono<Void>> {
     private final RecipientRepository recipientRepository;
+    private final TransactionalOperator operator;
 
     @Override
-    @Transactional
-    public void accept(UserRegisteredEvent event) {
-        logger.info("UserRegisteredEvent for user '{}' received", event.getUserName());
+    public Mono<Void> apply(Flux<UserRegisteredEvent> events) {
+        return events.doOnNext(event -> logger.info("UserRegisteredEvent for user '{}' received", event.getUserName()))
+                .flatMap(this::doCreateRecipient)
+                .then();
+    }
 
-        if (recipientRepository.getByUsername(event.getUserName()).isPresent()) {
-            logger.warn("Notification settings for user '{}' already exists", event.getUserName());
-            return;
-        }
+    private Mono<Recipient> doCreateRecipient(UserRegisteredEvent event) {
+        return recipientRepository.getByUsername(event.getUserName())
+                .doOnNext(r -> logger.warn("Notification settings for user '{}' already exists", r.getUsername()))
+                .hasElement()
+                .filter(b -> !b)
+                .map(b -> newRecipient(event))
+                .flatMap(recipientRepository::save)
+                .doOnNext(r -> logger.info("Notification settings for user '{}' created", r.getUsername()))
+                .as(operator::transactional);
+    }
 
-        NotificationSettings remind = NotificationSettings.builder()
+    private Recipient newRecipient(UserRegisteredEvent event) {
+        var remind = NotificationSettings.builder()
                 .active(true)
                 .frequency(Frequency.MONTHLY)
                 .build();
-        Recipient recipient = Recipient.builder()
+        return Recipient.builder()
                 .username(event.getUserName())
                 .email(event.getEmail())
                 .notification(NotificationType.REMIND, remind)
                 .build();
-        recipientRepository.save(recipient);
-
-        logger.info("Notification settings for user '{}' created", event.getUserName());
     }
 }

@@ -11,30 +11,37 @@ import static com.ninja_squad.dbsetup.Operations.sequenceOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
-import com.github.galleog.piggymetrics.statistics.config.JooqConfig;
 import com.github.galleog.piggymetrics.statistics.domain.DataPoint;
 import com.github.galleog.piggymetrics.statistics.domain.ItemMetric;
 import com.github.galleog.piggymetrics.statistics.domain.ItemType;
 import com.github.galleog.piggymetrics.statistics.domain.StatisticalMetric;
 import com.github.galleog.piggymetrics.statistics.repository.DataPointRepository;
-import com.google.common.collect.ImmutableList;
+import com.github.galleog.r2dbc.jooq.config.R2dbcJooqAutoConfiguration;
+import com.github.galleog.r2dbc.jooq.transaction.TransactionAwareJooqWrapper;
 import com.ninja_squad.dbsetup.DbSetup;
 import com.ninja_squad.dbsetup.DbSetupTracker;
 import com.ninja_squad.dbsetup.destination.DataSourceDestination;
-import com.ninja_squad.dbsetup.operation.Operation;
 import org.assertj.db.api.Assertions;
 import org.assertj.db.type.DateValue;
 import org.assertj.db.type.Table;
-import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jooq.JooqTest;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import reactor.test.StepVerifier;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
@@ -42,17 +49,15 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.GregorianCalendar;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
 
 /**
  * Tests for {@link JooqDataPointRepository}.
  */
-@JooqTest
+@DataR2dbcTest
+@Testcontainers
 @ActiveProfiles("test")
-@Import(JooqConfig.class)
-@Transactional(propagation = Propagation.NOT_SUPPORTED)
+@Import(JooqDataPointRepositoryTest.DataSourceConfig.class)
+@ImportAutoConfiguration(R2dbcJooqAutoConfiguration.class)
 class JooqDataPointRepositoryTest {
     private static final String ACCOUNT_NAME = "test";
     private static final LocalDate NOW = LocalDate.now();
@@ -73,17 +78,35 @@ class JooqDataPointRepositoryTest {
 
     private static final DbSetupTracker DB_SETUP_TRACKER = new DbSetupTracker();
 
+    @Container
+    private static final PostgreSQLContainer<?> postgresql = new PostgreSQLContainer<>("postgres:13.7-alpine");
+
     @Autowired
     private DataSource dataSource;
     @Autowired
-    private DSLContext dsl;
+    private TransactionAwareJooqWrapper wrapper;
 
     private DataPointRepository repository;
     private DataSourceDestination destination;
 
+    @DynamicPropertySource
+    static void postgresqlProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.r2dbc.url", () -> url("r2dbc"));
+        registry.add("spring.r2dbc.username", postgresql::getUsername);
+        registry.add("spring.r2dbc.password", postgresql::getPassword);
+        registry.add("spring.datasource.url", () -> url("jdbc"));
+        registry.add("spring.datasource.username", postgresql::getUsername);
+        registry.add("spring.datasource.password", postgresql::getPassword);
+    }
+
+    private static String url(String prefix) {
+        return String.format("%s:postgresql://%s:%s/%s", prefix, postgresql.getHost(),
+                postgresql.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT), postgresql.getDatabaseName());
+    }
+
     @BeforeEach
     void setUp() {
-        repository = new JooqDataPointRepository(dsl);
+        repository = new JooqDataPointRepository(wrapper);
 
         destination = DataSourceDestination.with(dataSource);
     }
@@ -92,11 +115,21 @@ class JooqDataPointRepositoryTest {
         return DateValue.from(GregorianCalendar.from(date.atStartOfDay(ZoneId.systemDefault())));
     }
 
+    @TestConfiguration(proxyBeanMethods = false)
+    @EnableConfigurationProperties(DataSourceProperties.class)
+    static class DataSourceConfig {
+        @Bean
+        DataSource dataSource(DataSourceProperties properties) {
+            return properties.initializeDataSourceBuilder()
+                    .build();
+        }
+    }
+
     @Nested
     class ReadTest {
         @BeforeEach
         void setUp() {
-            Operation operation = sequenceOf(
+            var operation = sequenceOf(
                     deleteAllFrom(
                             STATISTICAL_METRICS.getName(),
                             ITEM_METRICS.getName(),
@@ -114,20 +147,20 @@ class JooqDataPointRepositoryTest {
                             .build(),
                     insertInto(ITEM_METRICS.getName())
                             .row()
-                            .column(ITEM_METRICS.ID.getName(), SALARY_ID)
-                            .column(ITEM_METRICS.ACCOUNT_NAME.getName(), ACCOUNT_NAME)
-                            .column(ITEM_METRICS.DATA_POINT_DATE.getName(), DAY_BEFORE)
-                            .column(ITEM_METRICS.ITEM_TYPE.getName(), ItemType.INCOME.name())
-                            .column(ITEM_METRICS.TITLE.getName(), SALARY)
-                            .column(ITEM_METRICS.MONEY_AMOUNT.getName(), SALARY_AMOUNT)
-                            .end()
-                            .row()
                             .column(ITEM_METRICS.ID.getName(), GROCERY_ID)
                             .column(ITEM_METRICS.ACCOUNT_NAME.getName(), ACCOUNT_NAME)
                             .column(ITEM_METRICS.DATA_POINT_DATE.getName(), NOW)
                             .column(ITEM_METRICS.ITEM_TYPE.getName(), EXPENSE.name())
                             .column(ITEM_METRICS.TITLE.getName(), GROCERY)
                             .column(ITEM_METRICS.MONEY_AMOUNT.getName(), GROCERY_AMOUNT)
+                            .end()
+                            .row()
+                            .column(ITEM_METRICS.ID.getName(), SALARY_ID)
+                            .column(ITEM_METRICS.ACCOUNT_NAME.getName(), ACCOUNT_NAME)
+                            .column(ITEM_METRICS.DATA_POINT_DATE.getName(), DAY_BEFORE)
+                            .column(ITEM_METRICS.ITEM_TYPE.getName(), ItemType.INCOME.name())
+                            .column(ITEM_METRICS.TITLE.getName(), SALARY)
+                            .column(ITEM_METRICS.MONEY_AMOUNT.getName(), SALARY_AMOUNT)
                             .end()
                             .row()
                             .column(ITEM_METRICS.ID.getName(), VACATION_ID)
@@ -178,7 +211,7 @@ class JooqDataPointRepositoryTest {
                             .build()
             );
 
-            DbSetup dbSetup = new DbSetup(destination, operation);
+            var dbSetup = new DbSetup(destination, operation);
             DB_SETUP_TRACKER.launchIfNecessary(dbSetup);
         }
 
@@ -189,21 +222,37 @@ class JooqDataPointRepositoryTest {
         void shouldGetDataPointByAccountNameAndDate() {
             DB_SETUP_TRACKER.skipNextLaunch();
 
-            Optional<DataPoint> dataPoint = repository.getByAccountNameAndDate(ACCOUNT_NAME, NOW);
-            assertThat(dataPoint).isPresent();
-            assertThat(dataPoint.get().getAccountName()).isEqualTo(ACCOUNT_NAME);
-            assertThat(dataPoint.get().getDate()).isEqualTo(NOW);
-            assertThat(dataPoint.get().getMetrics()).extracting(
-                    ItemMetric::getId, ItemMetric::getType, ItemMetric::getTitle, ItemMetric::getMoneyAmount
-            ).containsExactlyInAnyOrder(
-                    tuple(GROCERY_ID, EXPENSE, GROCERY, GROCERY_AMOUNT),
-                    tuple(VACATION_ID, EXPENSE, VACATION, VACATION_AMOUNT)
-            );
-            assertThat(dataPoint.get().getStatistics()).containsOnly(
-                    new SimpleEntry<>(StatisticalMetric.INCOMES_AMOUNT, ZERO),
-                    new SimpleEntry<>(StatisticalMetric.EXPENSES_AMOUNT, EXPENSES_AMOUNT),
-                    new SimpleEntry<>(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
-            );
+            repository.getByAccountNameAndDate(ACCOUNT_NAME, NOW)
+                    .as(StepVerifier::create)
+                    .expectNextMatches(dataPoint -> {
+                        assertThat(dataPoint.getAccountName()).isEqualTo(ACCOUNT_NAME);
+                        assertThat(dataPoint.getDate()).isEqualTo(NOW);
+                        assertThat(dataPoint.getMetrics()).extracting(
+                                ItemMetric::getId, ItemMetric::getType, ItemMetric::getTitle, ItemMetric::getMoneyAmount
+                        ).containsExactlyInAnyOrder(
+                                tuple(GROCERY_ID, EXPENSE, GROCERY, GROCERY_AMOUNT),
+                                tuple(VACATION_ID, EXPENSE, VACATION, VACATION_AMOUNT)
+                        );
+                        assertThat(dataPoint.getStatistics()).containsOnly(
+                                new SimpleEntry<>(StatisticalMetric.INCOMES_AMOUNT, ZERO),
+                                new SimpleEntry<>(StatisticalMetric.EXPENSES_AMOUNT, EXPENSES_AMOUNT),
+                                new SimpleEntry<>(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
+                        );
+                        return true;
+                    }).verifyComplete();
+        }
+
+        /**
+         * Test for {@link JooqDataPointRepository#getByAccountNameAndDate(String, LocalDate)}
+         * when there is no data point with the specified date.
+         */
+        @Test
+        void shouldNotGetDataPointByAccountNameAndDate() {
+            DB_SETUP_TRACKER.skipNextLaunch();
+
+            repository.getByAccountNameAndDate(ACCOUNT_NAME, NOW.minusWeeks(1))
+                    .as(StepVerifier::create)
+                    .verifyComplete();
         }
 
         /**
@@ -213,54 +262,48 @@ class JooqDataPointRepositoryTest {
         void shouldListDataPointsByAccountName() {
             DB_SETUP_TRACKER.skipNextLaunch();
 
-            List<DataPoint> dataPoints;
-            try (Stream<DataPoint> stream = repository.listByAccountName(ACCOUNT_NAME)) {
-                dataPoints = stream.collect(ImmutableList.toImmutableList());
-            }
-
-            assertThat(dataPoints).extracting(DataPoint::getDate)
-                    .containsExactlyInAnyOrder(NOW, DAY_BEFORE);
-
-            DataPoint now = dataPoints.stream().filter(dataPoint -> NOW.equals(dataPoint.getDate()))
-                    .findFirst()
-                    .get();
-            assertThat(now.getAccountName()).isEqualTo(ACCOUNT_NAME);
-            assertThat(now.getMetrics()).extracting(
-                    ItemMetric::getId, ItemMetric::getType, ItemMetric::getTitle, ItemMetric::getMoneyAmount
-            ).containsExactlyInAnyOrder(
-                    tuple(GROCERY_ID, EXPENSE, GROCERY, GROCERY_AMOUNT),
-                    tuple(VACATION_ID, EXPENSE, VACATION, VACATION_AMOUNT)
-            );
-            assertThat(now.getStatistics()).containsOnly(
-                    new SimpleEntry<>(StatisticalMetric.INCOMES_AMOUNT, ZERO),
-                    new SimpleEntry<>(StatisticalMetric.EXPENSES_AMOUNT, EXPENSES_AMOUNT),
-                    new SimpleEntry<>(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
-            );
-
-            DataPoint dayBefore = dataPoints.stream().filter(dataPoint -> DAY_BEFORE.equals(dataPoint.getDate()))
-                    .findFirst()
-                    .get();
-            assertThat(dayBefore.getAccountName()).isEqualTo(ACCOUNT_NAME);
-            assertThat(dayBefore.getMetrics()).extracting(
-                    ItemMetric::getId, ItemMetric::getType, ItemMetric::getTitle, ItemMetric::getMoneyAmount
-            ).containsExactly(tuple(SALARY_ID, INCOME, SALARY, SALARY_AMOUNT));
-            assertThat(dayBefore.getStatistics()).containsOnly(
-                    new SimpleEntry<>(StatisticalMetric.INCOMES_AMOUNT, SALARY_AMOUNT),
-                    new SimpleEntry<>(StatisticalMetric.EXPENSES_AMOUNT, ZERO),
-                    new SimpleEntry<>(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
-            );
+            repository.listByAccountName(ACCOUNT_NAME)
+                    .as(StepVerifier::create)
+                    .expectNextMatches(dataPoint -> {
+                        assertThat(dataPoint.getAccountName()).isEqualTo(ACCOUNT_NAME);
+                        assertThat(dataPoint.getDate()).isEqualTo(DAY_BEFORE);
+                        assertThat(dataPoint.getMetrics()).extracting(
+                                ItemMetric::getId, ItemMetric::getType, ItemMetric::getTitle, ItemMetric::getMoneyAmount
+                        ).containsExactly(tuple(SALARY_ID, INCOME, SALARY, SALARY_AMOUNT));
+                        assertThat(dataPoint.getStatistics()).containsOnly(
+                                new SimpleEntry<>(StatisticalMetric.INCOMES_AMOUNT, SALARY_AMOUNT),
+                                new SimpleEntry<>(StatisticalMetric.EXPENSES_AMOUNT, ZERO),
+                                new SimpleEntry<>(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
+                        );
+                        return true;
+                    }).expectNextMatches(dataPoint -> {
+                        assertThat(dataPoint.getAccountName()).isEqualTo(ACCOUNT_NAME);
+                        assertThat(dataPoint.getDate()).isEqualTo(NOW);
+                        assertThat(dataPoint.getMetrics()).extracting(
+                                ItemMetric::getId, ItemMetric::getType, ItemMetric::getTitle, ItemMetric::getMoneyAmount
+                        ).containsExactlyInAnyOrder(
+                                tuple(GROCERY_ID, EXPENSE, GROCERY, GROCERY_AMOUNT),
+                                tuple(VACATION_ID, EXPENSE, VACATION, VACATION_AMOUNT)
+                        );
+                        assertThat(dataPoint.getStatistics()).containsOnly(
+                                new SimpleEntry<>(StatisticalMetric.INCOMES_AMOUNT, ZERO),
+                                new SimpleEntry<>(StatisticalMetric.EXPENSES_AMOUNT, EXPENSES_AMOUNT),
+                                new SimpleEntry<>(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
+                        );
+                        return true;
+                    }).verifyComplete();
         }
 
         /**
          * Test for {@link JooqDataPointRepository#listByAccountName(String)} when no data points are found.
          */
         @Test
-        void shouldReturnEmptySteamWhenNoDataPointsFound() {
+        void shouldReturnEmptyStreamWhenNoDataPointsFound() {
             DB_SETUP_TRACKER.skipNextLaunch();
 
-            try (Stream<DataPoint> stream = repository.listByAccountName("not found")) {
-                assertThat(stream).isEmpty();
-            }
+            repository.listByAccountName("not found")
+                    .as(StepVerifier::create)
+                    .verifyComplete();
         }
     }
 
@@ -268,13 +311,13 @@ class JooqDataPointRepositoryTest {
     class SaveTest {
         @BeforeEach
         void setUp() {
-            Operation operation = deleteAllFrom(
+            var operation = deleteAllFrom(
                     STATISTICAL_METRICS.getName(),
                     ITEM_METRICS.getName(),
                     DATA_POINTS.getName()
             );
 
-            DbSetup dbSetup = new DbSetup(destination, operation);
+            var dbSetup = new DbSetup(destination, operation);
             dbSetup.launch();
         }
 
@@ -283,22 +326,22 @@ class JooqDataPointRepositoryTest {
          */
         @Test
         void shouldSaveDataPoint() {
-            ItemMetric grocery = ItemMetric.builder()
+            var grocery = ItemMetric.builder()
                     .type(EXPENSE)
                     .title(GROCERY)
                     .moneyAmount(GROCERY_AMOUNT)
                     .build();
-            ItemMetric vacation = ItemMetric.builder()
+            var vacation = ItemMetric.builder()
                     .type(EXPENSE)
                     .title(VACATION)
                     .moneyAmount(VACATION_AMOUNT)
                     .build();
-            ItemMetric salary = ItemMetric.builder()
+            var salary = ItemMetric.builder()
                     .type(INCOME)
                     .title(SALARY)
                     .moneyAmount(SALARY_AMOUNT)
                     .build();
-            DataPoint dataPoint = DataPoint.builder()
+            var dataPoint = DataPoint.builder()
                     .accountName(ACCOUNT_NAME)
                     .date(NOW)
                     .metric(grocery)
@@ -309,43 +352,46 @@ class JooqDataPointRepositoryTest {
                     .statistic(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
                     .build();
 
-            DataPoint saved = repository.save(dataPoint);
+            repository.save(dataPoint)
+                    .as(StepVerifier::create)
+                    .expectNextMatches(dp -> {
+                        var dataPoints = new Table(dataSource, DATA_POINTS.getName());
+                        Assertions.assertThat(dataPoints)
+                                .column(DATA_POINTS.ACCOUNT_NAME.getName()).containsValues(ACCOUNT_NAME)
+                                .column(DATA_POINTS.DATA_POINT_DATE.getName()).containsValues(toDateValue(NOW));
 
-            Table dataPoints = new Table(dataSource, DATA_POINTS.getName());
-            Assertions.assertThat(dataPoints)
-                    .column(DATA_POINTS.ACCOUNT_NAME.getName()).containsValues(ACCOUNT_NAME)
-                    .column(DATA_POINTS.DATA_POINT_DATE.getName()).containsValues(toDateValue(NOW));
+                        var itemMetrics = new Table(dataSource, ITEM_METRICS.getName());
+                        Assertions.assertThat(itemMetrics)
+                                .column(ITEM_METRICS.TITLE.getName()).containsValues(GROCERY, VACATION, SALARY)
+                                .column(ITEM_METRICS.MONEY_AMOUNT.getName()).containsValues(GROCERY_AMOUNT, VACATION_AMOUNT, SALARY_AMOUNT)
+                                .column(ITEM_METRICS.ITEM_TYPE.getName()).containsValues(EXPENSE.name(), EXPENSE.name(), INCOME.name());
 
-            Table itemMetrics = new Table(dataSource, ITEM_METRICS.getName());
-            Assertions.assertThat(itemMetrics)
-                    .column(ITEM_METRICS.TITLE.getName()).containsValues(GROCERY, VACATION, SALARY)
-                    .column(ITEM_METRICS.MONEY_AMOUNT.getName()).containsValues(GROCERY_AMOUNT, VACATION_AMOUNT, SALARY_AMOUNT)
-                    .column(ITEM_METRICS.ITEM_TYPE.getName()).containsValues(EXPENSE.name(), EXPENSE.name(), INCOME.name());
+                        var statisticalMetrics = new Table(dataSource, STATISTICAL_METRICS.getName());
+                        Assertions.assertThat(statisticalMetrics)
+                                .column(STATISTICAL_METRICS.STATISTICAL_METRIC.getName())
+                                .containsValues(
+                                        StatisticalMetric.EXPENSES_AMOUNT.name(),
+                                        StatisticalMetric.INCOMES_AMOUNT.name(),
+                                        StatisticalMetric.SAVING_AMOUNT.name()
+                                ).column(STATISTICAL_METRICS.MONEY_AMOUNT.getName())
+                                .containsValues(EXPENSES_AMOUNT, SALARY_AMOUNT, SAVING_AMOUNT);
 
-            Table statisticalMetrics = new Table(dataSource, STATISTICAL_METRICS.getName());
-            Assertions.assertThat(statisticalMetrics)
-                    .column(STATISTICAL_METRICS.STATISTICAL_METRIC.getName())
-                    .containsValues(
-                            StatisticalMetric.EXPENSES_AMOUNT.name(),
-                            StatisticalMetric.INCOMES_AMOUNT.name(),
-                            StatisticalMetric.SAVING_AMOUNT.name()
-                    ).column(STATISTICAL_METRICS.MONEY_AMOUNT.getName())
-                    .containsValues(EXPENSES_AMOUNT, SALARY_AMOUNT, SAVING_AMOUNT);
-
-            assertThat(saved.getAccountName()).isEqualTo(ACCOUNT_NAME);
-            assertThat(saved.getDate()).isEqualTo(NOW);
-            assertThat(saved.getMetrics()).extracting(
-                    ItemMetric::getType, ItemMetric::getTitle, ItemMetric::getMoneyAmount
-            ).containsExactlyInAnyOrder(
-                    tuple(EXPENSE, GROCERY, GROCERY_AMOUNT),
-                    tuple(EXPENSE, VACATION, VACATION_AMOUNT),
-                    tuple(INCOME, SALARY, SALARY_AMOUNT)
-            );
-            assertThat(saved.getStatistics()).containsOnly(
-                    new SimpleEntry<>(StatisticalMetric.INCOMES_AMOUNT, SALARY_AMOUNT),
-                    new SimpleEntry<>(StatisticalMetric.EXPENSES_AMOUNT, EXPENSES_AMOUNT),
-                    new SimpleEntry<>(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
-            );
+                        assertThat(dp.getAccountName()).isEqualTo(ACCOUNT_NAME);
+                        assertThat(dp.getDate()).isEqualTo(NOW);
+                        assertThat(dp.getMetrics()).extracting(
+                                ItemMetric::getType, ItemMetric::getTitle, ItemMetric::getMoneyAmount
+                        ).containsExactlyInAnyOrder(
+                                tuple(EXPENSE, GROCERY, GROCERY_AMOUNT),
+                                tuple(EXPENSE, VACATION, VACATION_AMOUNT),
+                                tuple(INCOME, SALARY, SALARY_AMOUNT)
+                        );
+                        assertThat(dp.getStatistics()).containsOnly(
+                                new SimpleEntry<>(StatisticalMetric.INCOMES_AMOUNT, SALARY_AMOUNT),
+                                new SimpleEntry<>(StatisticalMetric.EXPENSES_AMOUNT, EXPENSES_AMOUNT),
+                                new SimpleEntry<>(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
+                        );
+                        return true;
+                    }).verifyComplete();
         }
     }
 
@@ -353,7 +399,7 @@ class JooqDataPointRepositoryTest {
     class UpdateTest {
         @BeforeEach
         void setUp() {
-            Operation operation = sequenceOf(
+            var operation = sequenceOf(
                     deleteAllFrom(
                             STATISTICAL_METRICS.getName(),
                             ITEM_METRICS.getName(),
@@ -397,7 +443,7 @@ class JooqDataPointRepositoryTest {
                             .build()
             );
 
-            DbSetup dbSetup = new DbSetup(destination, operation);
+            var dbSetup = new DbSetup(destination, operation);
             DB_SETUP_TRACKER.launchIfNecessary(dbSetup);
         }
 
@@ -408,22 +454,22 @@ class JooqDataPointRepositoryTest {
         void shouldUpdateDataPoint() {
             DB_SETUP_TRACKER.skipNextLaunch();
 
-            ItemMetric grocery = ItemMetric.builder()
+            var grocery = ItemMetric.builder()
                     .type(EXPENSE)
                     .title(GROCERY)
                     .moneyAmount(GROCERY_AMOUNT)
                     .build();
-            ItemMetric vacation = ItemMetric.builder()
+            var vacation = ItemMetric.builder()
                     .type(EXPENSE)
                     .title(VACATION)
                     .moneyAmount(VACATION_AMOUNT)
                     .build();
-            ItemMetric salary = ItemMetric.builder()
+            var salary = ItemMetric.builder()
                     .type(INCOME)
                     .title(SALARY)
                     .moneyAmount(ANOTHER_SALARY_AMOUNT)
                     .build();
-            DataPoint dataPoint = DataPoint.builder()
+            var dataPoint = DataPoint.builder()
                     .accountName(ACCOUNT_NAME)
                     .date(NOW)
                     .metric(grocery)
@@ -434,44 +480,47 @@ class JooqDataPointRepositoryTest {
                     .statistic(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
                     .build();
 
-            DataPoint updated = repository.update(dataPoint).get();
+            repository.update(dataPoint)
+                    .as(StepVerifier::create)
+                    .expectNextMatches(dp -> {
+                        var dataPoints = new Table(dataSource, DATA_POINTS.getName());
+                        Assertions.assertThat(dataPoints)
+                                .column(DATA_POINTS.ACCOUNT_NAME.getName()).containsValues(ACCOUNT_NAME)
+                                .column(DATA_POINTS.DATA_POINT_DATE.getName()).containsValues(toDateValue(NOW));
 
-            Table dataPoints = new Table(dataSource, DATA_POINTS.getName());
-            Assertions.assertThat(dataPoints)
-                    .column(DATA_POINTS.ACCOUNT_NAME.getName()).containsValues(ACCOUNT_NAME)
-                    .column(DATA_POINTS.DATA_POINT_DATE.getName()).containsValues(toDateValue(NOW));
+                        var itemMetrics = new Table(dataSource, ITEM_METRICS.getName());
+                        Assertions.assertThat(itemMetrics)
+                                .column(ITEM_METRICS.TITLE.getName()).containsValues(GROCERY, VACATION, SALARY)
+                                .column(ITEM_METRICS.MONEY_AMOUNT.getName())
+                                .containsValues(GROCERY_AMOUNT, VACATION_AMOUNT, ANOTHER_SALARY_AMOUNT)
+                                .column(ITEM_METRICS.ITEM_TYPE.getName()).containsValues(EXPENSE.name(), EXPENSE.name(), INCOME.name());
 
-            Table itemMetrics = new Table(dataSource, ITEM_METRICS.getName());
-            Assertions.assertThat(itemMetrics)
-                    .column(ITEM_METRICS.TITLE.getName()).containsValues(GROCERY, VACATION, SALARY)
-                    .column(ITEM_METRICS.MONEY_AMOUNT.getName())
-                    .containsValues(GROCERY_AMOUNT, VACATION_AMOUNT, ANOTHER_SALARY_AMOUNT)
-                    .column(ITEM_METRICS.ITEM_TYPE.getName()).containsValues(EXPENSE.name(), EXPENSE.name(), INCOME.name());
+                        var statisticalMetrics = new Table(dataSource, STATISTICAL_METRICS.getName());
+                        Assertions.assertThat(statisticalMetrics)
+                                .column(STATISTICAL_METRICS.STATISTICAL_METRIC.getName())
+                                .containsValues(
+                                        StatisticalMetric.EXPENSES_AMOUNT.name(),
+                                        StatisticalMetric.INCOMES_AMOUNT.name(),
+                                        StatisticalMetric.SAVING_AMOUNT.name()
+                                ).column(STATISTICAL_METRICS.MONEY_AMOUNT.getName())
+                                .containsValues(EXPENSES_AMOUNT, ANOTHER_SALARY_AMOUNT, SAVING_AMOUNT);
 
-            Table statisticalMetrics = new Table(dataSource, STATISTICAL_METRICS.getName());
-            Assertions.assertThat(statisticalMetrics)
-                    .column(STATISTICAL_METRICS.STATISTICAL_METRIC.getName())
-                    .containsValues(
-                            StatisticalMetric.EXPENSES_AMOUNT.name(),
-                            StatisticalMetric.INCOMES_AMOUNT.name(),
-                            StatisticalMetric.SAVING_AMOUNT.name()
-                    ).column(STATISTICAL_METRICS.MONEY_AMOUNT.getName())
-                    .containsValues(EXPENSES_AMOUNT, ANOTHER_SALARY_AMOUNT, SAVING_AMOUNT);
-
-            assertThat(updated.getAccountName()).isEqualTo(ACCOUNT_NAME);
-            assertThat(updated.getDate()).isEqualTo(NOW);
-            assertThat(updated.getMetrics()).extracting(
-                    ItemMetric::getType, ItemMetric::getTitle, ItemMetric::getMoneyAmount
-            ).containsExactlyInAnyOrder(
-                    tuple(EXPENSE, GROCERY, GROCERY_AMOUNT),
-                    tuple(EXPENSE, VACATION, VACATION_AMOUNT),
-                    tuple(INCOME, SALARY, ANOTHER_SALARY_AMOUNT)
-            );
-            assertThat(updated.getStatistics()).containsOnly(
-                    new SimpleEntry<>(StatisticalMetric.INCOMES_AMOUNT, ANOTHER_SALARY_AMOUNT),
-                    new SimpleEntry<>(StatisticalMetric.EXPENSES_AMOUNT, EXPENSES_AMOUNT),
-                    new SimpleEntry<>(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
-            );
+                        assertThat(dp.getAccountName()).isEqualTo(ACCOUNT_NAME);
+                        assertThat(dp.getDate()).isEqualTo(NOW);
+                        assertThat(dp.getMetrics()).extracting(
+                                ItemMetric::getType, ItemMetric::getTitle, ItemMetric::getMoneyAmount
+                        ).containsExactlyInAnyOrder(
+                                tuple(EXPENSE, GROCERY, GROCERY_AMOUNT),
+                                tuple(EXPENSE, VACATION, VACATION_AMOUNT),
+                                tuple(INCOME, SALARY, ANOTHER_SALARY_AMOUNT)
+                        );
+                        assertThat(dp.getStatistics()).containsOnly(
+                                new SimpleEntry<>(StatisticalMetric.INCOMES_AMOUNT, ANOTHER_SALARY_AMOUNT),
+                                new SimpleEntry<>(StatisticalMetric.EXPENSES_AMOUNT, EXPENSES_AMOUNT),
+                                new SimpleEntry<>(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
+                        );
+                        return true;
+                    }).verifyComplete();
         }
 
         /**
@@ -481,14 +530,17 @@ class JooqDataPointRepositoryTest {
         void shouldNotUpdateDataPoint() {
             DB_SETUP_TRACKER.skipNextLaunch();
 
-            DataPoint dataPoint = DataPoint.builder()
+            var dataPoint = DataPoint.builder()
                     .accountName(ACCOUNT_NAME)
                     .date(DAY_BEFORE)
                     .statistic(StatisticalMetric.INCOMES_AMOUNT, ZERO)
                     .statistic(StatisticalMetric.EXPENSES_AMOUNT, ZERO)
                     .statistic(StatisticalMetric.SAVING_AMOUNT, SAVING_AMOUNT)
                     .build();
-            assertThat(repository.update(dataPoint)).isNotPresent();
+
+            repository.update(dataPoint)
+                    .as(StepVerifier::create)
+                    .verifyComplete();
         }
     }
 }

@@ -30,6 +30,17 @@ databaseChangeLog:
       id: 3
       author: galleog
       changes:
+        - createIndex:
+            indexName: idx_data_points_date
+            tableName: data_points
+            columns:
+              - column:
+                  name: data_point_date
+
+  - changeSet:
+      id: 4
+      author: galleog
+      changes:
         - createTable:
             tableName: item_metrics
             columns:
@@ -67,7 +78,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: 4
+      id: 5
       author: galleog
       changes:
         - addForeignKeyConstraint:
@@ -78,7 +89,20 @@ databaseChangeLog:
             constraintName: fk_item_metrics_data_points
 
   - changeSet:
-      id: 5
+      id: 6
+      author: galleog
+      changes:
+        - createIndex:
+            indexName: idx_item_metrics_name_date
+            tableName: item_metrics
+            columns:
+              - column:
+                  name: account_name
+              - column:
+                  name: data_point_date
+
+  - changeSet:
+      id: 7
       author: galleog
       changes:
         - createSequence:
@@ -87,7 +111,7 @@ databaseChangeLog:
             incrementBy: 1
 
   - changeSet:
-      id: 6
+      id: 8
       author: galleog
       changes:
         - createTable:
@@ -115,7 +139,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: 7
+      id: 9
       author: galleog
       changes:
         - addPrimaryKey:
@@ -124,7 +148,7 @@ databaseChangeLog:
             constraintName: pk_statistical_metrics
 
   - changeSet:
-      id: 8
+      id: 10
       author: galleog
       changes:
         - addForeignKeyConstraint:
@@ -133,6 +157,19 @@ databaseChangeLog:
             referencedTableName: data_points
             referencedColumnNames: account_name, data_point_date
             constraintName: fk_statistical_metrics_data_points
+
+  - changeSet:
+      id: 11
+      author: galleog
+      changes:
+        - createIndex:
+            indexName: idx_stat_metrics_name_date
+            tableName: statistical_metrics
+            columns:
+              - column:
+                  name: account_name
+              - column:
+                  name: data_point_date
 
 
 

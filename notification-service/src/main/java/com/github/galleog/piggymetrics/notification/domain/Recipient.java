@@ -10,7 +10,6 @@ import org.apache.commons.validator.routines.EmailValidator;
 import org.springframework.lang.NonNull;
 
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Recipient of notifications.
@@ -20,17 +19,14 @@ public class Recipient {
     /**
      * Name of the user to send notifications to.
      */
-    @NonNull
     private String username;
     /**
      * Email to send notifications to.
      */
-    @NonNull
     private String email;
     /**
      * Notification settings.
      */
-    @NonNull
     private Map<NotificationType, NotificationSettings> notifications;
 
     @Builder
@@ -43,20 +39,26 @@ public class Recipient {
     }
 
     /**
-     * Sets the last notified date for the specified notification type to the current date.
+     * Returns a new recipient whose last notified date for the specified notification type set to the current date.
      *
      * @param type the notification type
      * @throws NullPointerException     if the type is {@code null}
      * @throws IllegalArgumentException if the notification settings of the specified type aren't active
      */
-    public void markNotified(@NonNull NotificationType type) {
+    public Recipient markNotified(@NonNull NotificationType type) {
         Validate.notNull(type);
 
-        Optional.ofNullable(getNotifications().get(type))
-                .ifPresent(settings -> {
-                    Validate.isTrue(settings.isActive());
-                    settings.markNotified();
-                });
+        var builder = Recipient.builder()
+                .username(getUsername())
+                .email(getEmail())
+                .notifications(getNotifications());
+
+        var settings = getNotifications().get(type);
+        if (settings != null) {
+            builder.notification(type, settings.markNotified());
+        }
+
+        return builder.build();
     }
 
     @Override

@@ -1,15 +1,15 @@
 spring:
-  datasource:
-    driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://${DATABASE_HOST:localhost}:${DATABASE_PORT:5432}/${DATABASE_NAME:piggymetrics}
+  r2dbc:
+    url: r2dbc:pool:postgresql://${DATABASE_HOST:localhost}:${DATABASE_PORT:5432}/${DATABASE_NAME:piggymetrics}
     username: ${DATABASE_USER:postgres}
     password: ${DATABASE_PASSWORD:secret}
 
-    hikari:
-      maximum-pool-size: 3
-
   jmx:
     enabled: false
+
+  sql:
+    init:
+      mode: never
 
   jooq:
     schema: ${DATABASE_SCHEMA:account_service}
@@ -20,24 +20,21 @@ spring:
 
   cloud:
     function:
-      definition: userRegisteredEventConsumer
+      definition: userRegisteredEventConsumer;accountUpdatedEventSupplier
 
     stream:
-      function:
-        bindings:
-          userRegisteredEventConsumer-in-0: user-event-in
-
       bindings:
-        user-event-in:
+        userRegisteredEventConsumer-in-0:
           destination: ${USER_EVENTS_TOPIC:user-events}
           content-type: application/x-protobuf
-        account-event-out:
+        accountUpdatedEventSupplier-out-0:
           destination: ${ACCOUNT_EVENTS_TOPIC:account-events}
           content-type: application/x-protobuf
 
       kafka:
         binder:
           brokers: ${KAFKA_BROKERS:localhost:9092}
+
 grpc:
   server:
     port: 9090

@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.github.galleog.r2dbc.jooq.config.R2dbcJooqAutoConfiguration

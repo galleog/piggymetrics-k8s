@@ -8,48 +8,56 @@ import com.google.common.annotations.VisibleForTesting;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.javamoney.moneta.Money;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import java.math.BigDecimal;
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Consumer of events on new user registrations.
  */
 @Slf4j
-@Component
 @RequiredArgsConstructor
-public class UserRegisteredEventConsumer implements Consumer<UserRegisteredEvent> {
+public class UserRegisteredEventConsumer implements Function<Flux<UserRegisteredEvent>, Mono<Void>> {
     @VisibleForTesting
     public static final CurrencyUnit BASE_CURRENCY = Monetary.getCurrency("USD");
 
     private final AccountRepository accountRepository;
+    private final TransactionalOperator operator;
 
     @Override
-    @Transactional
-    public void accept(UserRegisteredEvent event) {
-        logger.info("UserRegisteredEvent for user '{}' received", event.getUserName());
+    public Mono<Void> apply(Flux<UserRegisteredEvent> events) {
+        return events.map(UserRegisteredEvent::getUserName)
+                .doOnNext(name -> logger.info("UserRegisteredEvent for user '{}' received", name))
+                .flatMap(this::doCreateAccount)
+                .then();
+    }
 
-        if (accountRepository.getByName(event.getUserName()).isPresent()) {
-            logger.warn("Account for user '{}' already exists", event.getUserName());
-            return;
-        }
+    private Mono<Account> doCreateAccount(String name) {
+        return accountRepository.getByName(name)
+                .doOnNext(account -> logger.warn("Account for user '{}' already exists", name))
+                .hasElement()
+                .filter(b -> !b)
+                .map(b -> newAccount(name))
+                .flatMap(accountRepository::save)
+                .doOnNext(account -> logger.info("Account for user '{}' created", account.getName()))
+                .as(operator::transactional);
+    }
 
-        Saving saving = Saving.builder()
+    private Account newAccount(String name) {
+        var saving = Saving.builder()
                 .moneyAmount(Money.of(BigDecimal.ZERO, BASE_CURRENCY))
                 .interest(BigDecimal.ZERO)
                 .deposit(false)
                 .capitalization(false)
                 .build();
-        Account account = Account.builder()
-                .name(event.getUserName())
+        return Account.builder()
+                .name(name)
                 .saving(saving)
                 .build();
-        accountRepository.save(account);
-
-        logger.info("Account for user '{}' created", event.getUserName());
     }
 }

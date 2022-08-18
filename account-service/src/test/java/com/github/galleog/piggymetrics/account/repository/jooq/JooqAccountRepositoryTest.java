@@ -14,43 +14,51 @@ import static com.ninja_squad.dbsetup.Operations.sequenceOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
-import com.github.galleog.piggymetrics.account.config.JooqConfig;
 import com.github.galleog.piggymetrics.account.domain.Account;
 import com.github.galleog.piggymetrics.account.domain.Item;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
+import com.github.galleog.r2dbc.jooq.config.R2dbcJooqAutoConfiguration;
+import com.github.galleog.r2dbc.jooq.transaction.TransactionAwareJooqWrapper;
 import com.google.common.collect.ImmutableList;
 import com.ninja_squad.dbsetup.DbSetup;
 import com.ninja_squad.dbsetup.DbSetupTracker;
 import com.ninja_squad.dbsetup.destination.DataSourceDestination;
-import com.ninja_squad.dbsetup.operation.Operation;
 import org.assertj.db.api.Assertions;
 import org.assertj.db.type.Table;
 import org.javamoney.moneta.Money;
-import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jooq.JooqTest;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import reactor.test.StepVerifier;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Tests for {@link JooqAccountRepository}.
  */
-@JooqTest
+@DataR2dbcTest
+@Testcontainers
 @ActiveProfiles("test")
-@Import(JooqConfig.class)
-@Transactional(propagation = Propagation.NOT_SUPPORTED)
+@Import(JooqAccountRepositoryTest.DataSourceConfig.class)
+@ImportAutoConfiguration(R2dbcJooqAutoConfiguration.class)
 class JooqAccountRepositoryTest {
     private static final String ACCOUNT_1_NAME = "test1";
     private static final String ACCOUNT_2_NAME = "test2";
@@ -76,17 +84,34 @@ class JooqAccountRepositoryTest {
 
     private static final DbSetupTracker DB_SETUP_TRACKER = new DbSetupTracker();
 
+    @Container
+    private static final PostgreSQLContainer<?> postgresql = new PostgreSQLContainer<>("postgres:13.7-alpine");
+
     @Autowired
     private DataSource dataSource;
     @Autowired
-    private DSLContext dsl;
-
+    private TransactionAwareJooqWrapper wrapper;
     private AccountRepository repository;
     private DataSourceDestination destination;
 
+    @DynamicPropertySource
+    static void postgresqlProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.r2dbc.url", () -> url("r2dbc"));
+        registry.add("spring.r2dbc.username", postgresql::getUsername);
+        registry.add("spring.r2dbc.password", postgresql::getPassword);
+        registry.add("spring.datasource.url", () -> url("jdbc"));
+        registry.add("spring.datasource.username", postgresql::getUsername);
+        registry.add("spring.datasource.password", postgresql::getPassword);
+    }
+
+    private static String url(String prefix) {
+        return String.format("%s:postgresql://%s:%s/%s", prefix, postgresql.getHost(),
+                postgresql.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT), postgresql.getDatabaseName());
+    }
+
     @BeforeEach
     void setUp() {
-        repository = new JooqAccountRepository(dsl);
+        repository = new JooqAccountRepository(wrapper);
 
         destination = DataSourceDestination.with(dataSource);
     }
@@ -114,7 +139,7 @@ class JooqAccountRepositoryTest {
     private Saving stubSaving() {
         return Saving.builder()
                 .moneyAmount(Money.of(76000, USD))
-                .interest(BigDecimal.valueOf(1.7))
+                .interest(BigDecimal.valueOf(1.72))
                 .deposit(true)
                 .capitalization(true)
                 .build();
@@ -129,11 +154,21 @@ class JooqAccountRepositoryTest {
                 .build();
     }
 
+    @TestConfiguration(proxyBeanMethods = false)
+    @EnableConfigurationProperties(DataSourceProperties.class)
+    static class DataSourceConfig {
+        @Bean
+        DataSource dataSource(DataSourceProperties properties) {
+            return properties.initializeDataSourceBuilder()
+                    .build();
+        }
+    }
+
     @Nested
     class ReadTest {
         @BeforeEach
         void setUp() {
-            Operation operation = sequenceOf(
+            var operation = sequenceOf(
                     deleteAllFrom(
                             ITEMS.getName(),
                             SAVINGS.getName(),
@@ -203,7 +238,7 @@ class JooqAccountRepositoryTest {
                             .build()
             );
 
-            DbSetup dbSetup = new DbSetup(destination, operation);
+            var dbSetup = new DbSetup(destination, operation);
             DB_SETUP_TRACKER.launchIfNecessary(dbSetup);
         }
 
@@ -214,25 +249,28 @@ class JooqAccountRepositoryTest {
         void shouldGetAccountByNameWithItems() {
             DB_SETUP_TRACKER.skipNextLaunch();
 
-            Optional<Account> account = repository.getByName(ACCOUNT_1_NAME);
-            assertThat(account).isPresent();
-            assertThat(account.get().getName()).isEqualTo(ACCOUNT_1_NAME);
-            assertThat(account.get().getNote()).isNull();
-            assertThat(account.get().getUpdateTime()).isEqualTo(NOW);
+            repository.getByName(ACCOUNT_1_NAME)
+                    .as(StepVerifier::create)
+                    .expectNextMatches(a -> {
+                        assertThat(a.getName()).isEqualTo(ACCOUNT_1_NAME);
+                        assertThat(a.getNote()).isNull();
+                        assertThat(a.getUpdateTime()).isEqualTo(NOW);
 
-            Saving saving = account.get().getSaving();
-            assertThat(saving.getMoneyAmount()).isEqualTo(Money.of(SAVING_AMOUNT, USD));
-            assertThat(saving.getInterest()).isEqualTo(INTEREST);
-            assertThat(saving.isDeposit()).isTrue();
-            assertThat(saving.isCapitalization()).isFalse();
+                        var saving = a.getSaving();
+                        assertThat(saving.getMoneyAmount()).isEqualTo(Money.of(SAVING_AMOUNT, USD));
+                        assertThat(saving.getInterest()).isEqualTo(INTEREST);
+                        assertThat(saving.isDeposit()).isTrue();
+                        assertThat(saving.isCapitalization()).isFalse();
 
-            assertThat(account.get().getItems()).extracting(
-                    Item::getId, Item::getTitle, Item::getMoneyAmount, Item::getPeriod, Item::getIcon, Item::getType
-            ).containsExactlyInAnyOrder(
-                    tuple(GROCERY_ID, GROCERY, Money.of(GROCERY_AMOUNT, USD), DAY, GROCERY_ICON, EXPENSE),
-                    tuple(VACATION_ID, VACATION, Money.of(VACATION_AMOUNT, EUR), MONTH, VACATION_ICON, EXPENSE),
-                    tuple(SALARY_ID, SALARY, Money.of(SALARY_AMOUNT, USD), MONTH, SALARY_ICON, INCOME)
-            );
+                        assertThat(a.getItems()).extracting(
+                                Item::getId, Item::getTitle, Item::getMoneyAmount, Item::getPeriod, Item::getIcon, Item::getType
+                        ).containsExactlyInAnyOrder(
+                                tuple(GROCERY_ID, GROCERY, Money.of(GROCERY_AMOUNT, USD), DAY, GROCERY_ICON, EXPENSE),
+                                tuple(VACATION_ID, VACATION, Money.of(VACATION_AMOUNT, EUR), MONTH, VACATION_ICON, EXPENSE),
+                                tuple(SALARY_ID, SALARY, Money.of(SALARY_AMOUNT, USD), MONTH, SALARY_ICON, INCOME)
+                        );
+                        return true;
+                    }).verifyComplete();
         }
 
         /**
@@ -242,18 +280,22 @@ class JooqAccountRepositoryTest {
         void shouldGetAccountByNameWithoutItems() {
             DB_SETUP_TRACKER.skipNextLaunch();
 
-            Optional<Account> account = repository.getByName(ACCOUNT_2_NAME);
-            assertThat(account.get().getName()).isEqualTo(ACCOUNT_2_NAME);
-            assertThat(account.get().getNote()).isEqualTo(NOTE);
-            assertThat(account.get().getUpdateTime()).isEqualTo(NOW);
+            repository.getByName(ACCOUNT_2_NAME)
+                    .as(StepVerifier::create)
+                    .expectNextMatches(a -> {
+                        assertThat(a.getName()).isEqualTo(ACCOUNT_2_NAME);
+                        assertThat(a.getNote()).isEqualTo(NOTE);
+                        assertThat(a.getUpdateTime()).isEqualTo(NOW);
 
-            Saving saving = account.get().getSaving();
-            assertThat(saving.getMoneyAmount()).isEqualTo(Money.of(ZERO, EUR));
-            assertThat(saving.getInterest()).isEqualTo(ZERO);
-            assertThat(saving.isDeposit()).isFalse();
-            assertThat(saving.isCapitalization()).isFalse();
+                        var saving = a.getSaving();
+                        assertThat(saving.getMoneyAmount()).isEqualTo(Money.of(ZERO, EUR));
+                        assertThat(saving.getInterest()).isEqualTo(ZERO);
+                        assertThat(saving.isDeposit()).isFalse();
+                        assertThat(saving.isCapitalization()).isFalse();
 
-            assertThat(account.get().getItems()).isEmpty();
+                        assertThat(a.getItems()).isEmpty();
+                        return true;
+                    }).verifyComplete();
         }
 
         /**
@@ -263,7 +305,9 @@ class JooqAccountRepositoryTest {
         void shouldNotGetAccountByName() {
             DB_SETUP_TRACKER.skipNextLaunch();
 
-            assertThat(repository.getByName("noname")).isNotPresent();
+            repository.getByName("noname")
+                    .as(StepVerifier::create)
+                    .verifyComplete();
         }
     }
 
@@ -271,7 +315,7 @@ class JooqAccountRepositoryTest {
     class SaveTest {
         @BeforeEach
         void setUp() {
-            Operation operation = sequenceOf(
+            var operation = sequenceOf(
                     deleteAllFrom(
                             ITEMS.getName(),
                             SAVINGS.getName(),
@@ -279,7 +323,7 @@ class JooqAccountRepositoryTest {
                     )
             );
 
-            DbSetup dbSetup = new DbSetup(destination, operation);
+            var dbSetup = new DbSetup(destination, operation);
             dbSetup.launch();
         }
 
@@ -288,54 +332,58 @@ class JooqAccountRepositoryTest {
          */
         @Test
         void shouldSaveAccount() {
-            Item income = stubIncome();
-            Item expense = stubExpense();
-            Account account = stubAccount(ImmutableList.of(income, expense));
-            Account saved = repository.save(account);
+            var income = stubIncome();
+            var expense = stubExpense();
+            var account = stubAccount(ImmutableList.of(income, expense));
 
-            Table accounts = new Table(dataSource, ACCOUNTS.getName());
-            Assertions.assertThat(accounts)
-                    .column(ACCOUNTS.NAME.getName()).containsValues(ACCOUNT_1_NAME)
-                    .column(ACCOUNTS.UPDATE_TIME.getName()).hasOnlyNotNullValues()
-                    .column(ACCOUNTS.NOTE.getName()).containsValues(NOTE);
+            repository.save(account)
+                    .as(StepVerifier::create)
+                    .expectNextMatches(a -> {
+                        var accounts = new Table(dataSource, ACCOUNTS.getName());
+                        Assertions.assertThat(accounts)
+                                .column(ACCOUNTS.NAME.getName()).containsValues(ACCOUNT_1_NAME)
+                                .column(ACCOUNTS.UPDATE_TIME.getName()).hasOnlyNotNullValues()
+                                .column(ACCOUNTS.NOTE.getName()).containsValues(NOTE);
 
-            Table savings = new Table(dataSource, SAVINGS.getName());
-            Assertions.assertThat(savings)
-                    .column(SAVINGS.ACCOUNT_NAME.getName()).containsValues(ACCOUNT_1_NAME)
-                    .column(SAVINGS.CURRENCY_CODE.getName()).containsValues(USD)
-                    .column(SAVINGS.MONEY_AMOUNT.getName())
-                    .containsValues(account.getSaving().getMoneyAmount().getNumberStripped())
-                    .column(SAVINGS.INTEREST.getName()).containsValues(account.getSaving().getInterest())
-                    .column(SAVINGS.DEPOSIT.getName()).containsValues(true)
-                    .column(SAVINGS.CAPITALIZATION.getName()).containsValues(true);
+                        var savings = new Table(dataSource, SAVINGS.getName());
+                        Assertions.assertThat(savings)
+                                .column(SAVINGS.ACCOUNT_NAME.getName()).containsValues(ACCOUNT_1_NAME)
+                                .column(SAVINGS.CURRENCY_CODE.getName()).containsValues(USD)
+                                .column(SAVINGS.MONEY_AMOUNT.getName())
+                                .containsValues(account.getSaving().getMoneyAmount().getNumberStripped())
+                                .column(SAVINGS.INTEREST.getName()).containsValues(account.getSaving().getInterest())
+                                .column(SAVINGS.DEPOSIT.getName()).containsValues(true)
+                                .column(SAVINGS.CAPITALIZATION.getName()).containsValues(true);
 
-            Table items = new Table(dataSource, ITEMS.getName());
-            Assertions.assertThat(items)
-                    .column(ITEMS.ACCOUNT_NAME.getName()).containsValues(ACCOUNT_1_NAME, ACCOUNT_1_NAME)
-                    .column(ITEMS.TITLE.getName()).containsValues(income.getTitle(), expense.getTitle())
-                    .column(ITEMS.CURRENCY_CODE.getName()).containsValues(EUR, EUR)
-                    .column(ITEMS.MONEY_AMOUNT.getName())
-                    .containsValues(income.getMoneyAmount().getNumberStripped(), expense.getMoneyAmount().getNumberStripped())
-                    .column(ITEMS.PERIOD.getName()).containsValues(MONTH.name(), YEAR.name())
-                    .column(ITEMS.ICON.getName()).containsValues(income.getIcon(), expense.getIcon())
-                    .column(ITEMS.ITEM_TYPE.getName()).containsValues(INCOME.name(), EXPENSE.name());
+                        var items = new Table(dataSource, ITEMS.getName());
+                        Assertions.assertThat(items)
+                                .column(ITEMS.ACCOUNT_NAME.getName()).containsValues(ACCOUNT_1_NAME, ACCOUNT_1_NAME)
+                                .column(ITEMS.TITLE.getName()).containsValues(income.getTitle(), expense.getTitle())
+                                .column(ITEMS.CURRENCY_CODE.getName()).containsValues(EUR, EUR)
+                                .column(ITEMS.MONEY_AMOUNT.getName())
+                                .containsValues(income.getMoneyAmount().getNumberStripped(), expense.getMoneyAmount().getNumberStripped())
+                                .column(ITEMS.PERIOD.getName()).containsValues(MONTH.name(), YEAR.name())
+                                .column(ITEMS.ICON.getName()).containsValues(income.getIcon(), expense.getIcon())
+                                .column(ITEMS.ITEM_TYPE.getName()).containsValues(INCOME.name(), EXPENSE.name());
 
-            assertThat(saved.getName()).isEqualTo(ACCOUNT_1_NAME);
-            assertThat(saved.getNote()).isEqualTo(NOTE);
-            assertThat(saved.getUpdateTime()).isNotNull();
+                        assertThat(a.getName()).isEqualTo(ACCOUNT_1_NAME);
+                        assertThat(a.getNote()).isEqualTo(NOTE);
+                        assertThat(a.getUpdateTime()).isNotNull();
 
-            assertThat(saved.getSaving().getMoneyAmount()).isEqualTo(account.getSaving().getMoneyAmount());
-            assertThat(saved.getSaving().getInterest()).isEqualTo(account.getSaving().getInterest());
-            assertThat(saved.getSaving().isDeposit()).isTrue();
-            assertThat(saved.getSaving().isCapitalization()).isTrue();
+                        assertThat(a.getSaving().getMoneyAmount()).isEqualTo(account.getSaving().getMoneyAmount());
+                        assertThat(a.getSaving().getInterest()).isEqualTo(account.getSaving().getInterest());
+                        assertThat(a.getSaving().isDeposit()).isTrue();
+                        assertThat(a.getSaving().isCapitalization()).isTrue();
 
-            assertThat(saved.getItems()).extracting(Item::getId).doesNotContainNull();
-            assertThat(saved.getItems()).extracting(
-                    Item::getTitle, Item::getMoneyAmount, Item::getPeriod, Item::getIcon, Item::getType
-            ).containsExactlyInAnyOrder(
-                    tuple(income.getTitle(), income.getMoneyAmount(), MONTH, income.getIcon(), INCOME),
-                    tuple(expense.getTitle(), expense.getMoneyAmount(), YEAR, expense.getIcon(), EXPENSE)
-            );
+                        assertThat(a.getItems()).extracting(Item::getId).doesNotContainNull();
+                        assertThat(a.getItems()).extracting(
+                                Item::getTitle, Item::getMoneyAmount, Item::getPeriod, Item::getIcon, Item::getType
+                        ).containsExactlyInAnyOrder(
+                                tuple(income.getTitle(), income.getMoneyAmount(), MONTH, income.getIcon(), INCOME),
+                                tuple(expense.getTitle(), expense.getMoneyAmount(), YEAR, expense.getIcon(), EXPENSE)
+                        );
+                        return true;
+                    }).verifyComplete();
         }
     }
 
@@ -343,7 +391,7 @@ class JooqAccountRepositoryTest {
     class UpdateTest {
         @BeforeEach
         void setUp() {
-            Operation operation = sequenceOf(
+            var operation = sequenceOf(
                     deleteAllFrom(
                             ITEMS.getName(),
                             SAVINGS.getName(),
@@ -400,7 +448,7 @@ class JooqAccountRepositoryTest {
                             .build()
             );
 
-            DbSetup dbSetup = new DbSetup(destination, operation);
+            var dbSetup = new DbSetup(destination, operation);
             DB_SETUP_TRACKER.launchIfNecessary(dbSetup);
         }
 
@@ -411,52 +459,56 @@ class JooqAccountRepositoryTest {
         void shouldUpdateToAccountWithItems() {
             DB_SETUP_TRACKER.skipNextLaunch();
 
-            Item income = stubIncome();
-            Item expense = stubExpense();
-            Account account = stubAccount(ImmutableList.of(income, expense));
-            Account updated = repository.update(account).get();
+            var income = stubIncome();
+            var expense = stubExpense();
+            var account = stubAccount(ImmutableList.of(income, expense));
 
-            Table accounts = new Table(dataSource, ACCOUNTS.getName());
-            Assertions.assertThat(accounts)
-                    .column(ACCOUNTS.NAME.getName()).containsValues(ACCOUNT_1_NAME)
-                    .column(ACCOUNTS.NOTE.getName()).containsValues(NOTE)
-                    .column(ACCOUNTS.UPDATE_TIME.getName()).hasOnlyNotNullValues();
+            repository.update(account)
+                    .as(StepVerifier::create)
+                    .expectNextMatches(a -> {
+                        var accounts = new Table(dataSource, ACCOUNTS.getName());
+                        Assertions.assertThat(accounts)
+                                .column(ACCOUNTS.NAME.getName()).containsValues(ACCOUNT_1_NAME)
+                                .column(ACCOUNTS.NOTE.getName()).containsValues(NOTE)
+                                .column(ACCOUNTS.UPDATE_TIME.getName()).hasOnlyNotNullValues();
 
-            Table savings = new Table(dataSource, SAVINGS.getName());
-            Assertions.assertThat(savings)
-                    .column(SAVINGS.CURRENCY_CODE.getName()).containsValues(USD)
-                    .column(SAVINGS.MONEY_AMOUNT.getName())
-                    .containsValues(account.getSaving().getMoneyAmount().getNumberStripped())
-                    .column(SAVINGS.INTEREST.getName()).containsValues(account.getSaving().getInterest())
-                    .column(SAVINGS.DEPOSIT.getName()).containsValues(true)
-                    .column(SAVINGS.CAPITALIZATION.getName()).containsValues(true);
+                        var savings = new Table(dataSource, SAVINGS.getName());
+                        Assertions.assertThat(savings)
+                                .column(SAVINGS.CURRENCY_CODE.getName()).containsValues(USD)
+                                .column(SAVINGS.MONEY_AMOUNT.getName())
+                                .containsValues(account.getSaving().getMoneyAmount().getNumberStripped())
+                                .column(SAVINGS.INTEREST.getName()).containsValues(account.getSaving().getInterest())
+                                .column(SAVINGS.DEPOSIT.getName()).containsValues(true)
+                                .column(SAVINGS.CAPITALIZATION.getName()).containsValues(true);
 
-            Table items = new Table(dataSource, ITEMS.getName());
-            Assertions.assertThat(items)
-                    .column(ITEMS.TITLE.getName()).containsValues(income.getTitle(), expense.getTitle())
-                    .column(ITEMS.CURRENCY_CODE.getName()).containsValues(EUR, EUR)
-                    .column(ITEMS.MONEY_AMOUNT.getName())
-                    .containsValues(income.getMoneyAmount().getNumberStripped(), expense.getMoneyAmount().getNumberStripped())
-                    .column(ITEMS.PERIOD.getName()).containsValues(MONTH.name(), YEAR.name())
-                    .column(ITEMS.ICON.getName()).containsValues(income.getIcon(), expense.getIcon())
-                    .column(ITEMS.ITEM_TYPE.getName()).containsValues(INCOME.name(), EXPENSE.name());
+                        var items = new Table(dataSource, ITEMS.getName());
+                        Assertions.assertThat(items)
+                                .column(ITEMS.TITLE.getName()).containsValues(income.getTitle(), expense.getTitle())
+                                .column(ITEMS.CURRENCY_CODE.getName()).containsValues(EUR, EUR)
+                                .column(ITEMS.MONEY_AMOUNT.getName())
+                                .containsValues(income.getMoneyAmount().getNumberStripped(), expense.getMoneyAmount().getNumberStripped())
+                                .column(ITEMS.PERIOD.getName()).containsValues(MONTH.name(), YEAR.name())
+                                .column(ITEMS.ICON.getName()).containsValues(income.getIcon(), expense.getIcon())
+                                .column(ITEMS.ITEM_TYPE.getName()).containsValues(INCOME.name(), EXPENSE.name());
 
-            assertThat(updated.getName()).isEqualTo(account.getName());
-            assertThat(updated.getNote()).isEqualTo(account.getNote());
-            assertThat(updated.getUpdateTime()).isAfter(NOW);
+                        assertThat(a.getName()).isEqualTo(account.getName());
+                        assertThat(a.getNote()).isEqualTo(account.getNote());
+                        assertThat(a.getUpdateTime()).isAfter(NOW);
 
-            assertThat(updated.getItems()).extracting(Item::getId).doesNotContainNull();
-            assertThat(updated.getSaving().getMoneyAmount()).isEqualTo(account.getSaving().getMoneyAmount());
-            assertThat(updated.getSaving().getInterest()).isEqualTo(account.getSaving().getInterest());
-            assertThat(updated.getSaving().isDeposit()).isTrue();
-            assertThat(updated.getSaving().isCapitalization()).isTrue();
+                        assertThat(a.getItems()).extracting(Item::getId).doesNotContainNull();
+                        assertThat(a.getSaving().getMoneyAmount()).isEqualTo(account.getSaving().getMoneyAmount());
+                        assertThat(a.getSaving().getInterest()).isEqualTo(account.getSaving().getInterest());
+                        assertThat(a.getSaving().isDeposit()).isTrue();
+                        assertThat(a.getSaving().isCapitalization()).isTrue();
 
-            assertThat(updated.getItems()).extracting(
-                    Item::getTitle, Item::getMoneyAmount, Item::getPeriod, Item::getIcon, Item::getType
-            ).containsExactlyInAnyOrder(
-                    tuple(income.getTitle(), income.getMoneyAmount(), MONTH, income.getIcon(), INCOME),
-                    tuple(expense.getTitle(), expense.getMoneyAmount(), YEAR, expense.getIcon(), EXPENSE)
-            );
+                        assertThat(a.getItems()).extracting(
+                                Item::getTitle, Item::getMoneyAmount, Item::getPeriod, Item::getIcon, Item::getType
+                        ).containsExactlyInAnyOrder(
+                                tuple(income.getTitle(), income.getMoneyAmount(), MONTH, income.getIcon(), INCOME),
+                                tuple(expense.getTitle(), expense.getMoneyAmount(), YEAR, expense.getIcon(), EXPENSE)
+                        );
+                        return true;
+                    }).verifyComplete();
         }
 
         /**
@@ -466,37 +518,41 @@ class JooqAccountRepositoryTest {
         void shouldUpdateToAccountWithoutItems() {
             DB_SETUP_TRACKER.skipNextLaunch();
 
-            Account account = stubAccount(ImmutableList.of());
-            Account updated = repository.update(account).get();
+            var account = stubAccount(ImmutableList.of());
 
-            Table accounts = new Table(dataSource, ACCOUNTS.getName());
-            Assertions.assertThat(accounts)
-                    .column(ACCOUNTS.NAME.getName()).containsValues(ACCOUNT_1_NAME)
-                    .column(ACCOUNTS.NOTE.getName()).containsValues(NOTE)
-                    .column(ACCOUNTS.UPDATE_TIME.getName()).hasOnlyNotNullValues();
+            repository.update(account)
+                    .as(StepVerifier::create)
+                    .expectNextMatches(a -> {
+                        var accounts = new Table(dataSource, ACCOUNTS.getName());
+                        Assertions.assertThat(accounts)
+                                .column(ACCOUNTS.NAME.getName()).containsValues(ACCOUNT_1_NAME)
+                                .column(ACCOUNTS.NOTE.getName()).containsValues(NOTE)
+                                .column(ACCOUNTS.UPDATE_TIME.getName()).hasOnlyNotNullValues();
 
-            Table savings = new Table(dataSource, SAVINGS.getName());
-            Assertions.assertThat(savings)
-                    .column(SAVINGS.CURRENCY_CODE.getName()).containsValues(USD)
-                    .column(SAVINGS.MONEY_AMOUNT.getName())
-                    .containsValues(account.getSaving().getMoneyAmount().getNumberStripped())
-                    .column(SAVINGS.INTEREST.getName()).containsValues(account.getSaving().getInterest())
-                    .column(SAVINGS.DEPOSIT.getName()).containsValues(true)
-                    .column(SAVINGS.CAPITALIZATION.getName()).containsValues(true);
+                        var savings = new Table(dataSource, SAVINGS.getName());
+                        Assertions.assertThat(savings)
+                                .column(SAVINGS.CURRENCY_CODE.getName()).containsValues(USD)
+                                .column(SAVINGS.MONEY_AMOUNT.getName())
+                                .containsValues(account.getSaving().getMoneyAmount().getNumberStripped())
+                                .column(SAVINGS.INTEREST.getName()).containsValues(account.getSaving().getInterest())
+                                .column(SAVINGS.DEPOSIT.getName()).containsValues(true)
+                                .column(SAVINGS.CAPITALIZATION.getName()).containsValues(true);
 
-            Table items = new Table(dataSource, ITEMS.getName());
-            Assertions.assertThat(items).isEmpty();
+                        var items = new Table(dataSource, ITEMS.getName());
+                        Assertions.assertThat(items).isEmpty();
 
-            assertThat(updated.getName()).isEqualTo(account.getName());
-            assertThat(updated.getNote()).isEqualTo(account.getNote());
-            assertThat(updated.getUpdateTime()).isAfter(NOW);
+                        assertThat(a.getName()).isEqualTo(account.getName());
+                        assertThat(a.getNote()).isEqualTo(account.getNote());
+                        assertThat(a.getUpdateTime()).isAfter(NOW);
 
-            assertThat(updated.getSaving().getMoneyAmount()).isEqualTo(account.getSaving().getMoneyAmount());
-            assertThat(updated.getSaving().getInterest()).isEqualTo(account.getSaving().getInterest());
-            assertThat(updated.getSaving().isDeposit()).isTrue();
-            assertThat(updated.getSaving().isCapitalization()).isTrue();
+                        assertThat(a.getSaving().getMoneyAmount()).isEqualTo(account.getSaving().getMoneyAmount());
+                        assertThat(a.getSaving().getInterest()).isEqualTo(account.getSaving().getInterest());
+                        assertThat(a.getSaving().isDeposit()).isTrue();
+                        assertThat(a.getSaving().isCapitalization()).isTrue();
 
-            assertThat(updated.getItems()).isEmpty();
+                        assertThat(a.getItems()).isEmpty();
+                        return true;
+                    }).verifyComplete();
         }
 
         /**
@@ -506,11 +562,14 @@ class JooqAccountRepositoryTest {
         void shouldNotUpdateAccount() {
             DB_SETUP_TRACKER.skipNextLaunch();
 
-            Account account = Account.builder()
+            var account = Account.builder()
                     .name(ACCOUNT_2_NAME)
                     .saving(stubSaving())
                     .build();
-            assertThat(repository.update(account)).isNotPresent();
+
+            repository.update(account)
+                    .as(StepVerifier::create)
+                    .verifyComplete();
         }
     }
 }

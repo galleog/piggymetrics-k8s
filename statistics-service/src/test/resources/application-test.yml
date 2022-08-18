@@ -1,9 +1,9 @@
 spring:
+  main:
+    banner-mode: off
+
   datasource:
-    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
-    url: jdbc:tc:postgresql:11.5-alpine:///databasename
-    username: test
-    password: test
+    type: org.postgresql.ds.PGSimpleDataSource
 
   liquibase:
     default-schema:

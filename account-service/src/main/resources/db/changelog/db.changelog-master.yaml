@@ -143,13 +143,24 @@ databaseChangeLog:
       id: 6
       author: galleog
       changes:
+        - createIndex:
+            indexName: idx_items_account_name
+            tableName: items
+            columns:
+              - column:
+                  name: account_name
+
+  - changeSet:
+      id: 7
+      author: galleog
+      changes:
         - createSequence:
             sequenceName: item_seq
             startValue: 10
             incrementBy: 1
 
   - changeSet:
-      id: 7
+      id: 8
       author: galleog
       changes:
         - insert:

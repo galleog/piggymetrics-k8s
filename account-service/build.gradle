@@ -2,15 +2,14 @@ apply plugin: 'org.springframework.boot'
 apply plugin: 'com.google.protobuf'
 apply plugin: 'com.google.cloud.tools.jib'
 apply plugin: 'nu.studer.jooq'
-apply plugin: 'io.freefair.aspectj.post-compile-weaving'
 
 description = 'account-service'
 
 dependencies {
     implementation(
             project(':grpc-common'),
+            project(':r2dbc-jooq'),
             project(':protobuf-spring-cloud-stream'),
-            'org.springframework.boot:spring-boot-starter-jooq',
             'org.springframework.cloud:spring-cloud-starter-stream-kafka',
             'org.springframework.cloud:spring-cloud-starter-kubernetes-fabric8-config',
             'io.grpc:grpc-protobuf',
@@ -20,28 +19,24 @@ dependencies {
             'net.devh:grpc-server-spring-boot-starter',
             'org.apache.commons:commons-lang3',
             'org.javamoney:moneta',
-            'com.google.guava:guava',
-            'org.aspectj:aspectjrt',
-            'org.aspectj:aspectjweaver',
-            'org.postgresql:postgresql'
-    )
-
-    compileOnly(
-            'jakarta.annotation:jakarta.annotation-api'
+            'com.google.guava:guava'
     )
 
     runtimeOnly(
-            'org.slf4j:jul-to-slf4j'
+            'org.slf4j:jul-to-slf4j',
+            'org.postgresql:r2dbc-postgresql',
+            'io.r2dbc:r2dbc-pool'
     )
 
     testImplementation(
             'org.springframework.boot:spring-boot-starter-test',
+            'org.springframework:spring-jdbc',
             'io.projectreactor:reactor-test',
             'com.ninja-squad:DbSetup',
             'org.assertj:assertj-db',
             'org.mockito:mockito-junit-jupiter',
-            'com.asarkar.grpc:grpc-test',
-            'org.junit.jupiter:junit-jupiter'
+            'org.testcontainers:postgresql',
+            'org.testcontainers:junit-jupiter'
     )
     testImplementation("org.springframework.cloud:spring-cloud-stream") {
         artifact {
@@ -53,12 +48,8 @@ dependencies {
     }
 
     testRuntimeOnly(
-            'org.testcontainers:postgresql',
+            'org.postgresql:postgresql',
             'org.liquibase:liquibase-core'
-    )
-
-    aspect(
-            "org.springframework:spring-aspects"
     )
 
     jooqGenerator(

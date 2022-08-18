@@ -27,25 +27,21 @@ public class DataPoint {
     /**
      * Account name this data point is associated with.
      */
-    @NonNull
     private String accountName;
 
     /**
      * Date of this data point.
      */
-    @NonNull
     private LocalDate date;
 
     /**
      * Account incomes and expenses.
      */
-    @NonNull
     private List<ItemMetric> metrics;
 
     /**
      * Total statistics of incomes, expenses, and savings.
      */
-    @NonNull
     private Map<StatisticalMetric, BigDecimal> statistics;
 
     @Builder
@@ -58,33 +54,36 @@ public class DataPoint {
     }
 
     /**
-     * Updates this data points.
+     * Returns a data point for the given account whose statistics are updated.
      *
-     * @param metrics the new data point metrics
-     * @param saving  the new saving
+     * @param accountName the account name
+     * @param metrics     the item metrics
+     * @param saving      the new saving
      * @throws NullPointerException if the metrics themselves, any metric they contain or the saving are {@code null}
      */
-    public void updateStatistics(@NonNull Collection<ItemMetric> metrics, @NonNull BigDecimal saving) {
+    public static DataPoint updateStatistics(@NonNull String accountName, @NonNull Collection<ItemMetric> metrics,
+                                             @NonNull BigDecimal saving) {
         Validate.notNull(saving);
         Validate.isTrue(saving.signum() != -1);
 
-        setMetrics(metrics);
-        setStatistics(
-                ImmutableMap.of(
+        return DataPoint.builder()
+                .accountName(accountName)
+                .date(LocalDate.now())
+                .metrics(metrics)
+                .statistic(
                         StatisticalMetric.INCOMES_AMOUNT,
                         metrics.stream()
                                 .filter(metric -> INCOME.equals(metric.getType()))
                                 .map(ItemMetric::getMoneyAmount)
-                                .reduce(BigDecimal.ZERO, BigDecimal::add),
+                                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                ).statistic(
                         StatisticalMetric.EXPENSES_AMOUNT,
                         metrics.stream()
                                 .filter(metric -> EXPENSE.equals(metric.getType()))
                                 .map(ItemMetric::getMoneyAmount)
-                                .reduce(BigDecimal.ZERO, BigDecimal::add),
-                        StatisticalMetric.SAVING_AMOUNT,
-                        saving
-                )
-        );
+                                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                ).statistic(StatisticalMetric.SAVING_AMOUNT, saving)
+                .build();
     }
 
     @Override

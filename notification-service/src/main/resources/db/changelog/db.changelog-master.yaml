@@ -74,6 +74,41 @@ databaseChangeLog:
       id: 5
       author: galleog
       changes:
+        - createIndex:
+            indexName: idx_notifications_username
+            tableName: recipient_notifications
+            columns:
+              - column:
+                  name: username
+
+  - changeSet:
+      id: 6
+      author: galleog
+      changes:
+        - createIndex:
+            indexName: idx_notifications_type_active
+            tableName: recipient_notifications
+            columns:
+              - column:
+                  name: notification_type
+              - column:
+                  name: active
+
+  - changeSet:
+      id: 7
+      author: galleog
+      changes:
+        - createIndex:
+            indexName: idx_notifications_date
+            tableName: recipient_notifications
+            columns:
+              - column:
+                  name: notify_date
+
+  - changeSet:
+      id: 8
+      author: galleog
+      changes:
         - createTable:
             tableName: shedlock
             columns:
