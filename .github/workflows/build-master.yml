@@ -40,7 +40,7 @@ jobs:
         with:
           arguments: aggregateJacocoReport
 
-      - name: Upload coverage to Codecov
+      - name: Upload Jacoco report to Codecov
         uses: codecov/codecov-action@v3
         with:
           files: ./build/reports/jacoco/report.xml
@@ -107,7 +107,7 @@ jobs:
           docker tag $NOTIFICATION_SERVICE:$COMMIT $NOTIFICATION_SERVICE:latest
           docker push -a $NOTIFICATION_SERVICE
 
-      - name: Create a shadow jar for keycloak-provider
+      - name: Create keycloak-provider shadow jar
         uses: gradle/gradle-build-action@v2
         with:
           arguments: -p keycloak-provider shadowJar
