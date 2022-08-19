@@ -34,6 +34,10 @@ spring:
       kafka:
         binder:
           brokers: ${KAFKA_BROKERS:localhost:9092}
+          required-acks: -1
+          producer-properties:
+            'enable.idempotence': true
+            retries: 5
 
 grpc:
   server:
