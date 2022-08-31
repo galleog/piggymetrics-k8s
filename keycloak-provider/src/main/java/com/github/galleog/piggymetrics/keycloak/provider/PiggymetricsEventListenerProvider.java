@@ -2,7 +2,6 @@ package com.github.galleog.piggymetrics.keycloak.provider;
 
 import com.github.galleog.piggymetrics.auth.grpc.UserRegisteredEventProto.UserRegisteredEvent;
 import com.google.common.annotations.VisibleForTesting;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -24,9 +23,7 @@ public class PiggymetricsEventListenerProvider implements EventListenerProvider 
 
     private static final Logger logger = Logger.getLogger(PiggymetricsEventListenerProvider.class);
 
-    @NonNull
     private final String topic;
-    @NonNull
     private final Producer<String, UserRegisteredEvent> producer;
 
     @Override

@@ -60,6 +60,7 @@ import java.util.List;
 @Import(JooqAccountRepositoryTest.DataSourceConfig.class)
 @ImportAutoConfiguration(R2dbcJooqAutoConfiguration.class)
 class JooqAccountRepositoryTest {
+    private static final String POSTGRES_IMAGE = "postgres:13.8-alpine";
     private static final String ACCOUNT_1_NAME = "test1";
     private static final String ACCOUNT_2_NAME = "test2";
     private static final LocalDateTime NOW = LocalDateTime.now();
@@ -85,7 +86,7 @@ class JooqAccountRepositoryTest {
     private static final DbSetupTracker DB_SETUP_TRACKER = new DbSetupTracker();
 
     @Container
-    private static final PostgreSQLContainer<?> postgresql = new PostgreSQLContainer<>("postgres:13.7-alpine");
+    private static final PostgreSQLContainer<?> postgresql = new PostgreSQLContainer<>(POSTGRES_IMAGE);
 
     @Autowired
     private DataSource dataSource;

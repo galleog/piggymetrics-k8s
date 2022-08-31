@@ -59,6 +59,7 @@ import java.util.GregorianCalendar;
 @Import(JooqDataPointRepositoryTest.DataSourceConfig.class)
 @ImportAutoConfiguration(R2dbcJooqAutoConfiguration.class)
 class JooqDataPointRepositoryTest {
+    private static final String POSTGRES_IMAGE = "postgres:13.8-alpine";
     private static final String ACCOUNT_NAME = "test";
     private static final LocalDate NOW = LocalDate.now();
     private static final LocalDate DAY_BEFORE = NOW.minusDays(1);
@@ -79,7 +80,7 @@ class JooqDataPointRepositoryTest {
     private static final DbSetupTracker DB_SETUP_TRACKER = new DbSetupTracker();
 
     @Container
-    private static final PostgreSQLContainer<?> postgresql = new PostgreSQLContainer<>("postgres:13.7-alpine");
+    private static final PostgreSQLContainer<?> postgresql = new PostgreSQLContainer<>(POSTGRES_IMAGE);
 
     @Autowired
     private DataSource dataSource;

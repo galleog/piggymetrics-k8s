@@ -35,10 +35,8 @@ ext {
             reactiveGrpc        : '1.2.3',
             protobuf            : '3.21.1',
             grpcSpringBoot      : '2.13.1.RELEASE',
-            jbossLogging        : '3.3.2.Final',
-            keycloak            : '6.0.1',
+            keycloak            : '18.0.2',
             kafkaProtobuf       : '2.2.0',
-            slf4jJbossLogging   : '1.2.1.Final',
             jooq                : '3.16.8',
             liquibaseSlf4j      : '4.1.0',
             grpcTest            : '1.2.1',
@@ -48,7 +46,7 @@ ext {
 
     database = [
             driver  : 'org.testcontainers.jdbc.ContainerDatabaseDriver',
-            url     : 'jdbc:tc:postgresql:13.7-alpine:///databasename?TC_INITFUNCTION=com.github.galleog.liquibase.tc.LiquibaseUpdater::update',
+            url     : 'jdbc:tc:postgresql:13.8-alpine:///databasename?TC_INITFUNCTION=com.github.galleog.liquibase.tc.LiquibaseUpdater::update',
             username: 'test',
             password: 'test'
     ]
@@ -110,8 +108,6 @@ subprojects {
             dependency "net.devh:grpc-spring-boot-starter:${ver.grpcSpringBoot}"
             dependency "net.devh:grpc-server-spring-boot-starter:${ver.grpcSpringBoot}"
             dependency "net.devh:grpc-client-spring-boot-starter:${ver.grpcSpringBoot}"
-            dependency "org.jboss.logging:jboss-logging:${ver.jbossLogging}"
-            dependency "org.jboss.slf4j:slf4j-jboss-logging:${ver.slf4jJbossLogging}"
             dependency "org.keycloak:keycloak-server-spi-private:${ver.keycloak}"
             dependency "com.github.daniel-shuy:kafka-protobuf-serde:${ver.kafkaProtobuf}"
             dependency "com.mattbertolini:liquibase-slf4j:${ver.liquibaseSlf4j}"

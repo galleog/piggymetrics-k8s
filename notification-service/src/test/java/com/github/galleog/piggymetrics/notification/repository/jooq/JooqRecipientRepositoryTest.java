@@ -57,6 +57,7 @@ import java.util.Map;
 @Import(JooqRecipientRepositoryTest.DataSourceConfig.class)
 @ImportAutoConfiguration(R2dbcJooqAutoConfiguration.class)
 class JooqRecipientRepositoryTest {
+    private static final String POSTGRES_IMAGE = "postgres:13.8-alpine";
     private static final String USERNAME_1 = "test1";
     private static final String USERNAME_2 = "test2";
     private static final String USERNAME_3 = "test3";
@@ -70,7 +71,7 @@ class JooqRecipientRepositoryTest {
     private static final DbSetupTracker DB_SETUP_TRACKER = new DbSetupTracker();
 
     @Container
-    private static final PostgreSQLContainer<?> postgresql = new PostgreSQLContainer<>("postgres:13.7-alpine");
+    private static final PostgreSQLContainer<?> postgresql = new PostgreSQLContainer<>(POSTGRES_IMAGE);
 
     @Autowired
     private DataSource dataSource;
