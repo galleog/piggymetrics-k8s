@@ -1,9 +1,9 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
-  name: {{ include "piggymetrics.fullname" . }}
+  name: {{ include "common.names.fullname" . }}
   labels:
-    {{- include "piggymetrics.labels" . | nindent 4 }}
+    {{- include "common.labels.standard" . | nindent 4 }}
 spec:
   selector:
     istio: ingressgateway

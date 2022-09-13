@@ -4,8 +4,10 @@
 
 replicaCount: 1
 
-image: galleog/piggymetrics-frontend:latest
-imagePullPolicy: IfNotPresent
+image:
+  repository: galleog/piggymetrics-frontend
+  tag: latest
+  pullPolicy: IfNotPresent
 
 livenessProbe:
   initialDelaySeconds: 30

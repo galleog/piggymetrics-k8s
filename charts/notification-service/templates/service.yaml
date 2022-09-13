@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: {{ .Release.Name }}-notification-service
   labels:
-    {{- include "notification-service.labels" . | nindent 4 }}
+    {{- include "common.labels.standard" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -12,5 +12,4 @@ spec:
       targetPort: grpc
       protocol: TCP
   selector:
-    app.kubernetes.io/name: {{ include "notification-service.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- include "common.labels.matchLabels" . | nindent 4 }}

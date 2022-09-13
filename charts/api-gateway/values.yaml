@@ -7,8 +7,10 @@ replicaCount: 1
 debug:
   enabled: false
 
-image: galleog/piggymetrics-api-gateway:latest
-imagePullPolicy: IfNotPresent
+image:
+  repository: galleog/piggymetrics-api-gateway
+  tag: latest
+  pullPolicy: IfNotPresent
 
 livenessProbe:
   initialDelaySeconds: 180
@@ -38,3 +40,10 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+serviceAccount:
+  create: true
+  name: ""
+
+rbac:
+  create: true

@@ -1,28 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "api-gateway.fullname" . }}
+  name: {{ include "common.names.fullname" . }}
   labels:
-    {{- include "api-gateway.labels" . | nindent 4 }}
+    {{- include "common.labels.standard" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "api-gateway.name" . }}
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "common.labels.matchLabels" . | nindent 6 }}
   template:
     metadata:
-      annotations:
-        sidecar.istio.io/inject: "true"
       labels:
-        app.kubernetes.io/name: {{ include "api-gateway.name" . }}
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "common.labels.standard" . | nindent 8 }}
+        sidecar.istio.io/inject: "true"
     spec:
-      serviceAccountName: {{ default "default" .Values.global.pgm.serviceAccount }}
+      serviceAccountName: {{ include "api-gateway.serviceAccount" . }}
       containers:
         - name: {{ .Chart.Name }}
-          image: {{ .Values.image | quote }}
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: JAVA_TOOL_OPTIONS
             {{- if .Values.debug.enabled }}
@@ -44,13 +41,17 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.keycloak.configMap }}
                   key: keycloak-port
+            - name: SPRING_CLOUD_KUBERNETES_CONFIG_NAME
+              value: {{ include "api-gateway.configmap" . }}
+            - name: SPRING_CLOUD_KUBERNETES_CONFIG_NAMESPACE
+              value: {{ .Release.Namespace }}
           ports:
             - name: http
               containerPort: 8080
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/liveness
               port: http
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ default 10 .Values.livenessProbe.periodSeconds }}
@@ -58,7 +59,7 @@ spec:
             failureThreshold: {{ default 3 .Values.livenessProbe.failureThreshold }}
           readinessProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/readiness
               port: http
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ default 10 .Values.readinessProbe.periodSeconds }}

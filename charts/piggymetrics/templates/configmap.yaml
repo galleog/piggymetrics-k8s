@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "piggymetrics.fullname" . }}-istio-vsvc-config
+  name: {{ include "piggymetrics.vsvcCM" . }}
   labels:
-    {{- include "piggymetrics.labels" . | nindent 4 }}
+    {{- include "common.labels.standard" . | nindent 4 }}
 data:
   {{- tpl (.Files.Glob "files/istio-vsvc.yaml").AsConfig . | nindent 2 }}

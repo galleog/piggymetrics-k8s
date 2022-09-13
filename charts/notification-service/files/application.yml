@@ -14,4 +14,3 @@ backup:
     text: "Howdy, {0}. Your account backup is ready.\r\n\r\nCheers,\r\nPiggyMetrics team"
     subject: PiggyMetrics account backup
     attachment: backup.json
-

@@ -1,28 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "notification-service.fullname" . }}
+  name: {{ include "common.names.fullname" . }}
   labels:
-    {{- include "notification-service.labels" . | nindent 4 }}
+    {{- include "common.labels.standard" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "notification-service.name" . }}
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "common.labels.matchLabels" . | nindent 6 }}
   template:
     metadata:
-      annotations:
-        sidecar.istio.io/inject: "true"
       labels:
-        app.kubernetes.io/name: {{ include "notification-service.name" . }}
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "common.labels.standard" . | nindent 8 }}
+        sidecar.istio.io/inject: "true"
     spec:
-      serviceAccountName: {{ default "default" .Values.global.pgm.serviceAccount }}
+      serviceAccountName: {{ include "notification-service.serviceAccount" . }}
       containers:
         - name: {{ .Chart.Name }}
-          image: {{ .Values.image | quote }}
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: JAVA_TOOL_OPTIONS
             {{- if .Values.debug.enabled }}
@@ -36,18 +33,18 @@ spec:
                   name: {{ .Values.global.postgresql.configMap }}
                   key: postgres-host
             - name: DATABASE_PORT
-              value: {{ .Values.global.postgresql.servicePort | quote }}
+              value: {{ .Values.global.postgresql.service.ports.postgresql | quote }}
             - name: DATABASE_NAME
-              value: {{ .Values.global.pgm.dbName }}
+              value: {{ .Values.global.pgm.database.name }}
             - name: DATABASE_USER
-              value: {{ .Values.global.pgm.dbUser }}
+              value: {{ .Values.global.pgm.database.user }}
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.global.postgresql.secret }}
                   key: pgm-postgres-password
             - name: DATABASE_SCHEMA
-              value: {{ .Values.global.pgm.notificationService.dbSchema }}
+              value: {{ .Values.global.pgm.notificationService.database.schema }}
             - name: ACCOUNT_SERVICE_HOST
               value: {{ .Release.Name }}-account-service.{{ .Release.Namespace }}.svc.cluster.local
             - name: ACCOUNT_SERVER_PORT
@@ -59,20 +56,24 @@ spec:
                   key: kafka-brokers
             - name: USER_EVENTS_TOPIC
               value: {{ .Values.global.kafka.topic.userEvents }}
+            - name: SPRING_CLOUD_KUBERNETES_CONFIG_NAME
+              value: {{ include "notification-service.configmap" . }}
+            - name: SPRING_CLOUD_KUBERNETES_CONFIG_NAMESPACE
+              value: {{ .Release.Namespace }}
           ports:
             - name: grpc
               containerPort: 9090
               protocol: TCP
           livenessProbe:
-            exec:
-              command: ["/bin/grpc_health_probe", "-addr=127.0.0.1:9090", "-service=piggymetrics.notification.RecipientService"]
+            grpc:
+              port: 9090
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ default 10 .Values.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ default 1 .Values.livenessProbe.timeoutSeconds }}
             failureThreshold: {{ default 3 .Values.livenessProbe.failureThreshold }}
           readinessProbe:
-            exec:
-              command: ["/bin/grpc_health_probe", "-addr=127.0.0.1:9090", "-service=piggymetrics.notification.RecipientService"]
+            grpc:
+              port: 9090
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ default 10 .Values.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ default 1 .Values.readinessProbe.timeoutSeconds }}

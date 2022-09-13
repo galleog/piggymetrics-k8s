@@ -8,8 +8,10 @@ fullnameOverride: ""
 gatewayPort: 80
 
 kubectl:
-  image: lachlanevenson/k8s-kubectl:latest
-  imagePullPolicy: IfNotPresent
+  image:
+    repository: lachlanevenson/k8s-kubectl
+    tag: latest
+    pullPolicy: IfNotPresent
 
 pgm-frontend:
   enabled: true
@@ -25,8 +27,3 @@ notification-service:
 
 statistics-service:
   enabled: true
-
-serviceAccount:
-  create: true
-role:
-  create: true

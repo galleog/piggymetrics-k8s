@@ -4,7 +4,7 @@ kind: ConfigMap
 metadata:
   name: {{ .Values.global.postgresql.configMap }}
   labels:
-    {{- include "pgm-dependencies.labels" . | nindent 4 }}
+    {{- include "common.labels.standard" . | nindent 4 }}
 data:
   postgres-host: {{ include "pgm-dependencies.postgresql.host" . }}
 {{- end }}

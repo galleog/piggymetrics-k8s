@@ -5,114 +5,130 @@
 postgresql:
   enabled: true
   image:
-    tag: 11.5.0
+    tag: 13.8.0
     pullPolicy: IfNotPresent
-  service:
-    type: NodePort
-  initdbScriptsConfigMap: pgm-postgres-init
+  primary:
+    service:
+      type: NodePort
+    initdb:
+      scriptsConfigMap: '{{ .Release.Name }}-initdb-scripts'
 
-  extraEnv:
-    - name: KEYCLOAK_POSTGRES_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: '{{ .Values.global.postgresql.secret }}'
-          key: keycloak-postgres-password
-    - name: PGM_POSTGRES_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: '{{ .Values.global.postgresql.secret }}'
-          key: pgm-postgres-password
+    extraEnvVars:
+      - name: KEYCLOAK_POSTGRES_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: '{{ .Values.global.postgresql.secret }}'
+            key: keycloak-postgres-password
+      - name: PGM_POSTGRES_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: '{{ .Values.global.postgresql.secret }}'
+            key: pgm-postgres-password
 
 kafka:
   enabled: true
   image:
-    tag: 2.2.1
+    tag: 3.2.1
   service:
     type: NodePort
-    port: 9092
+    ports:
+      client: 9092
 
-keycloak:
+keycloakx:
   enabled: true
-  init:
-    image:
-      repository: galleog/piggymetrics-keycloak-provider
-      tag: latest
-  keycloak:
-    service:
-      type: NodePort
-      port: 8080
+  image:
+    tag: 18.0.2
+  service:
+    type: NodePort
+    httpPort: 8080
+  database:
+    vendor: postgres
+    port: 5432
     username: keycloak
+    database: keycloak
 
-    persistence:
-      deployPostgres: false
-      dbVendor: postgres
-      dbHost: dummy
-      dbName: keycloak
-      dbPort: 5432
-      dbUser: keycloak
-      existingSecret: pgm-postgres-secret
-      existingSecretKey: keycloak-postgres-password
+  command:
+    - "/opt/keycloak/bin/kc.sh"
+    - "--verbose"
+    - "start"
+    - "--auto-build"
+    - "--import-realm"
+    - "--http-enabled=true"
+    - "--http-port=8080"
+    - "--hostname-strict=false"
+    - "--hostname-strict-https=false"
 
-    extraArgs: -Dkeycloak.import=/realm/pgm-realm.json
+  extraEnv: |
+    - name: JAVA_OPTS_APPEND
+      value: >-
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=50.0
+        -Djava.awt.headless=true
+        -Djgroups.dns.query={{ include "keycloak.fullname" . }}-headless
+    - name: KC_DB_URL_HOST
+      valueFrom:
+        configMapKeyRef:
+          name: {{ .Values.global.postgresql.configMap }}
+          key: postgres-host
+    - name: KC_DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: {{ .Values.global.postgresql.secret }}
+          key:   keycloak-postgres-password
+    - name: KEYCLOAK_ADMIN
+      value: admin
+    - name: KEYCLOAK_ADMIN_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: {{ .Release.Name }}-keycloak-admin-creds
+          key: password
+    - name: KAFKA_BROKERS
+      valueFrom:
+        configMapKeyRef:
+          name: {{ .Values.global.kafka.configMap }}
+          key: kafka-brokers
+    - name: USER_EVENTS_TOPIC
+      value: {{ .Values.global.kafka.topic.userEvents }}
 
-    extraEnv: |
-      - name: DB_ADDR
-        valueFrom:
-          configMapKeyRef:
-            name: {{ .Values.global.postgresql.configMap }}
-            key: postgres-host
-      - name: KAFKA_BROKERS
-        valueFrom:
-          configMapKeyRef:
-            name: {{ .Values.global.kafka.configMap }}
-            key: kafka-brokers
-      - name: USER_EVENTS_TOPIC
-        value: {{ .Values.global.kafka.topic.userEvents }}
+  extraInitContainers: |
+    - name: event-provider
+      image: "{{ .Values.global.keycloak.provider.image.repository }}:{{ .Values.global.keycloak.provider.image.tag }}"
+      imagePullPolicy: {{ .Values.global.keycloak.provider.image.pullPolicy }}
+      command:
+        - sh
+        - -c
+        - |
+          broker=$(echo "$KAFKA_BROKERS" | sed 's/\([^:]\+\):\([0-9]\+\).*/\1 \2/')
+          until printf "." && nc -z -w 2 $DATABASE_HOST {{ .Values.global.postgresql.service.ports.postgresql }} && nc -z -w 2 $broker; do
+              sleep 2;
+          done;
+          echo 'PostgreSQL & Kafka OK ✓'
+          cp /app/keycloak-provider.jar /providers
+      env:
+        - name: DATABASE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.global.postgresql.configMap }}
+              key: postgres-host
+        - name: KAFKA_BROKERS
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.global.kafka.configMap }}
+              key: kafka-brokers
+      volumeMounts:
+        - name: provider
+          mountPath: /providers
 
-    extraInitContainers: |
-      - name: event-provider
-        image: "{{ .Values.init.image.repository }}:{{ .Values.init.image.tag }}"
-        imagePullPolicy: {{ .Values.init.image.pullPolicy }}
-        command:
-          - sh
-          - -c
-          - |
-            broker=$(echo "$KAFKA_BROKERS" | sed 's/\([^:]\+\):\([0-9]\+\).*/\1 \2/')
-            until printf "." && nc -z -w 2 $DATABASE_HOST {{ .Values.global.postgresql.servicePort }} && nc -z -w 2 $broker; do
-                sleep 2;
-            done;
-            echo 'PostgreSQL & Kafka OK ✓'
-            cp /app/keycloak-provider.jar /providers
-        env:
-          - name: DATABASE_HOST
-            valueFrom:
-              configMapKeyRef:
-                name: {{ .Values.global.postgresql.configMap }}
-                key: postgres-host
-          - name: KAFKA_BROKERS
-            valueFrom:
-              configMapKeyRef:
-                name: {{ .Values.global.kafka.configMap }}
-                key: kafka-brokers
-        resources:
-          {{- toYaml .Values.init.resources | nindent 12 }}
-        volumeMounts:
-          - name: provider
-            mountPath: /providers
+  extraVolumeMounts: |
+    - name: provider
+      mountPath: /opt/keycloak/providers
+    - name: realm-secret
+      mountPath: /opt/keycloak/data/import
+      readOnly: true
 
-    extraVolumeMounts: |
-      - name: provider
-        mountPath: /opt/jboss/keycloak/providers
-      - name: realm-secret
-        mountPath: /realm
-        readOnly: true
-
-    extraVolumes: |
-      - name: provider
-        emptyDir: {}
-      - name: realm-secret
-        secret:
-          secretName: {{ .Release.Name }}-realm-secret
-
-  test:
-    enabled: false
+  extraVolumes: |
+    - name: provider
+      emptyDir: {}
+    - name: realm-secret
+      secret:
+        secretName: {{ .Release.Name }}-realm-secret

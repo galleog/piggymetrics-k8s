@@ -1,21 +1,21 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "piggymetrics.fullname" . }}-create-vsvc-job
+  name: {{ include "common.names.fullname" . }}-create-vsvc-job
   annotations:
     "helm.sh/hook": post-install, post-upgrade
     "helm.sh/hook-weight": "1"
-    "helm.sh/hook-delete-policy": hook-succeeded
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
   labels:
-    {{- include "piggymetrics.labels" . | nindent 4 }}
+    {{- include "common.labels.standard" . | nindent 4 }}
 spec:
   template:
     spec:
-      serviceAccountName: {{ include "piggymetrics.fullname" . }}-hook
+      serviceAccountName: {{ include "piggymetrics.hook.name" . }}
       containers:
         - name: create-vsvc-job
-          image: {{ .Values.kubectl.image | quote }}
-          imagePullPolicy: {{ .Values.kubectl.imagePullPolicy }}
+          image: "{{ .Values.kubectl.image.repository }}:{{ .Values.kubectl.image.tag }}"
+          imagePullPolicy: {{ .Values.kubectl.image.pullPolicy }}
           command:
             - sh
             - -c
@@ -38,28 +38,28 @@ spec:
       volumes:
         - name: istio-vsvc-config
           configMap:
-            name: {{ include "piggymetrics.fullname" . }}-istio-vsvc-config
+            name: {{ include "piggymetrics.vsvcCM" . }}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "piggymetrics.fullname" . }}-delete-vsvc-job
+  name: {{ include "common.names.fullname" . }}-delete-vsvc-job
   annotations:
     "helm.sh/hook": pre-delete
     "helm.sh/hook-weight": "1"
-    "helm.sh/hook-delete-policy": hook-succeeded
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
   labels:
-    {{- include "piggymetrics.labels" . | nindent 4 }}
+    {{- include "common.labels.standard" . | nindent 4 }}
 spec:
   template:
     spec:
-      serviceAccountName: {{ include "piggymetrics.fullname" . }}-hook
+      serviceAccountName: {{ include "piggymetrics.hook.name" . }}
       containers:
         - name: delete-vsvc-job
-          image: {{ .Values.kubectl.image | quote }}
-          imagePullPolicy: {{ .Values.kubectl.imagePullPolicy }}
+          image: "{{ .Values.kubectl.image.repository }}:{{ .Values.kubectl.image.tag }}"
+          imagePullPolicy: {{ .Values.kubectl.image.pullPolicy }}
           command:
             - sh
             - -c
-            - kubectl delete virtualservices {{ include "piggymetrics.fullname" . }}
+            - kubectl delete virtualservices {{ include "common.names.fullname" . }}
       restartPolicy: Never

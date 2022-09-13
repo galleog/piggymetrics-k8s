@@ -1,7 +1,8 @@
 {
-  "realm" : "piggymetrics",
-  "auth-server-url" : "/auth",
-  "ssl-required" : "external",
-  "resource" : "frontend",
-  "public-client" : true
+  "realm": "piggymetrics",
+  "auth-server-url": "/auth/",
+  "ssl-required": "external",
+  "resource": "frontend",
+  "public-client": true,
+  "confidential-port": 0
 }

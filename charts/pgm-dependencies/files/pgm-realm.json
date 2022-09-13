@@ -24,7 +24,7 @@
   ],
   "clients": [
     {
-      "clientId": "api-proxy",
+      "clientId": "api-gateway",
       "enabled": true,
       "secret": "secret",
       "bearerOnly": true

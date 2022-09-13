@@ -1,27 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "pgm-frontend.fullname" . }}
+  name: {{ include "common.names.fullname" . }}
   labels:
-    {{- include "pgm-frontend.labels" . | nindent 4 }}
+    {{- include "common.labels.standard" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "pgm-frontend.name" . }}
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "common.labels.matchLabels" . | nindent 6 }}
   template:
     metadata:
-      annotations:
-        sidecar.istio.io/inject: "true"
       labels:
-        app.kubernetes.io/name: {{ include "pgm-frontend.name" . }}
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "common.labels.standard" . | nindent 8 }}
+        sidecar.istio.io/inject: "true"
     spec:
       containers:
         - name: {{ .Chart.Name }}
-          image: {{ .Values.image | quote }}
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: SERVER_PORT
               value: "80"

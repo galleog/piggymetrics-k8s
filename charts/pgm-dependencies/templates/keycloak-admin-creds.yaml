@@ -2,10 +2,10 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ .Release.Name }}-realm-secret
+  name: {{ .Release.Name }}-keycloak-admin-creds
   labels:
     {{- include "common.labels.standard" . | nindent 4 }}
 type: Opaque
 data:
-  {{- (.Files.Glob "files/pgm-realm.json").AsSecrets | nindent 2 }}
+  password: {{ randAlphaNum 10 | b64enc | quote }}
 {{- end }}
