@@ -8,10 +8,8 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["configmaps"]
-    resourceNames: [{{ include "notification-service.configmap" . | quote }}]
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["pods"]
-    resourceNames: [{{ include "common.names.fullname" . | quote }}]
     verbs: ["get"]
 {{- end -}}
