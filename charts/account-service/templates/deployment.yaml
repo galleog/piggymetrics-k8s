@@ -63,15 +63,15 @@ spec:
               containerPort: 9090
               protocol: TCP
           livenessProbe:
-            grpc:
-              port: 9090
+            exec:
+              command: [ "/bin/grpc_health_probe", "-addr=127.0.0.1:9090", "-service=piggymetrics.account.AccountService" ]
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ default 10 .Values.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ default 1 .Values.livenessProbe.timeoutSeconds }}
             failureThreshold: {{ default 3 .Values.livenessProbe.failureThreshold }}
           readinessProbe:
-            grpc:
-              port: 9090
+            exec:
+              command: [ "/bin/grpc_health_probe", "-addr=127.0.0.1:9090", "-service=piggymetrics.account.AccountService" ]
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ default 10 .Values.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ default 1 .Values.readinessProbe.timeoutSeconds }}

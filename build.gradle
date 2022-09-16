@@ -50,6 +50,8 @@ ext {
             username: 'test',
             password: 'test'
     ]
+
+    grpcHealthProbeImage = 'galleog/grpc-health-probe:openjdk-11-0.4.12'
 }
 
 allprojects {
