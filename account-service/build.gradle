@@ -94,7 +94,7 @@ idea {
 
 jib {
     from {
-        image = 'openjdk:11-jre-slim'
+        image = 'galleog/grpc-health-probe:alpine'
     }
 }
 
