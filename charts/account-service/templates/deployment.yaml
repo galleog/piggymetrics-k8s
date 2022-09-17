@@ -64,14 +64,14 @@ spec:
               protocol: TCP
           livenessProbe:
             exec:
-              command: [ "/bin/grpc_health_probe", "-addr=127.0.0.1:9090", "-service=piggymetrics.account.AccountService" ]
+              command: [ "/bin/grpc_health_probe", "-addr=127.0.0.1:9090" ]
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ default 10 .Values.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ default 1 .Values.livenessProbe.timeoutSeconds }}
             failureThreshold: {{ default 3 .Values.livenessProbe.failureThreshold }}
           readinessProbe:
             exec:
-              command: [ "/bin/grpc_health_probe", "-addr=127.0.0.1:9090", "-service=piggymetrics.account.AccountService" ]
+              command: [ "/bin/grpc_health_probe", "-addr=127.0.0.1:9090" ]
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ default 10 .Values.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ default 1 .Values.readinessProbe.timeoutSeconds }}

@@ -1,31 +1,39 @@
-apiVersion: skaffold/v1beta5
+apiVersion: skaffold/v2beta29
 kind: Config
 build:
   artifacts:
     - image: piggymetrics/frontend
       context: ./pgm-frontend
     - image: piggymetrics/api-gateway
-      jibGradle:
+      jib:
         project: api-gateway
     - image: piggymetrics/account-service
-      jibGradle:
+      jib:
         project: account-service
     - image: piggymetrics/notification-service
-      jibGradle:
+      jib:
         project: notification-service
     - image: piggymetrics/statistics-service
-      jibGradle:
+      jib:
         project: statistics-service
 deploy:
   helm:
     releases:
       - name: pgm-dev
         chartPath: ./charts/piggymetrics
-        values:
-          "pgm-frontend.image": piggymetrics/frontend
-          "api-gateway.image": piggymetrics/api-gateway
-          "account-service.image": piggymetrics/account-service
-          "notification-service.image": piggymetrics/notification-service
-          "statistics-service.image": piggymetrics/statistics-service
+        artifactOverrides:
+          pgm-frontend.image: piggymetrics/frontend
+          api-gateway.image: piggymetrics/api-gateway
+          account-service.image: piggymetrics/account-service
+          notification-service.image: piggymetrics/notification-service
+          statistics-service.image: piggymetrics/statistics-service
+        imageStrategy:
+          helm: {}
+        setValues:
+          pgm-frontend.enabled: true
+          api-gateway.enabled: true
+          account-service.enabled: true
+          notification-service.enabled: true
+          statistics-service.enabled: true
         valuesFiles:
           - ./charts/global-values.yaml
