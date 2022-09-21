@@ -25,12 +25,14 @@ dependencies {
     runtimeOnly(
             'org.slf4j:jul-to-slf4j',
             'org.postgresql:r2dbc-postgresql',
-            'io.r2dbc:r2dbc-pool'
+            'io.r2dbc:r2dbc-pool',
+            'org.postgresql:postgresql',
+            'org.liquibase:liquibase-core',
+            'org.springframework:spring-jdbc'
     )
 
     testImplementation(
             'org.springframework.boot:spring-boot-starter-test',
-            'org.springframework:spring-jdbc',
             'io.projectreactor:reactor-test',
             'com.ninja-squad:DbSetup',
             'org.assertj:assertj-db',
@@ -47,11 +49,6 @@ dependencies {
             classifier = "test-binder"
         }
     }
-
-    testRuntimeOnly(
-            'org.postgresql:postgresql',
-            'org.liquibase:liquibase-core'
-    )
 
     jooqGenerator(
             project(':liquibase-tc'),

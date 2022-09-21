@@ -13,7 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.gson.GsonAutoConfiguration;
 import org.springframework.boot.autoconfigure.integration.IntegrationAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
 import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
+import org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.stream.binder.test.OutputDestination;
 import org.springframework.cloud.stream.binder.test.TestChannelBinderConfiguration;
@@ -26,15 +29,18 @@ import java.math.BigDecimal;
  * Tests for {@link FunctionConfig}.
  */
 @ActiveProfiles("test")
+@SpringBootTest(classes = {
+        AccountApplication.class,
+        TestChannelBinderConfiguration.class
+})
 @ImportAutoConfiguration(exclude = {
         KafkaAutoConfiguration.class,
         GrpcServerAutoConfiguration.class,
         GsonAutoConfiguration.class,
-        IntegrationAutoConfiguration.class
-})
-@SpringBootTest(classes = {
-        AccountApplication.class,
-        TestChannelBinderConfiguration.class
+        IntegrationAutoConfiguration.class,
+        DataSourceAutoConfiguration.class,
+        LiquibaseAutoConfiguration.class,
+        DataSourceTransactionManagerAutoConfiguration.class
 })
 class FunctionConfigTest {
     private static final String USD = "USD";

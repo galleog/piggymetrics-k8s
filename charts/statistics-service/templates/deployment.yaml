@@ -33,7 +33,7 @@ spec:
                   name: {{ .Values.global.postgresql.configMap }}
                   key: postgres-host
             - name: DATABASE_PORT
-              value: {{ .Values.global.postgresql.servicePort | quote }}
+              value: {{ .Values.global.postgresql.service.ports.postgresql | quote }}
             - name: DATABASE_NAME
               value: {{ .Values.global.pgm.database.name }}
             - name: DATABASE_USER

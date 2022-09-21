@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.boot.autoconfigure.liquibase.LiquibaseDataSource;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -159,6 +160,7 @@ class JooqAccountRepositoryTest {
     @EnableConfigurationProperties(DataSourceProperties.class)
     static class DataSourceConfig {
         @Bean
+        @LiquibaseDataSource
         DataSource dataSource(DataSourceProperties properties) {
             return properties.initializeDataSourceBuilder()
                     .build();

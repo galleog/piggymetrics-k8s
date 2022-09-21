@@ -13,6 +13,10 @@ spring:
 
   liquibase:
     default-schema: ${DATABASE_SCHEMA:statistics_service}
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DATABASE_HOST:localhost}:${DATABASE_PORT:5432}/${DATABASE_NAME:piggymetrics}
+    user: ${DATABASE_USER:postgres}
+    password: ${DATABASE_PASSWORD:secret}
 
   cloud:
     function:

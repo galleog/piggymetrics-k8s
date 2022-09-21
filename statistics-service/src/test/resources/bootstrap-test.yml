@@ -1,7 +1,4 @@
 spring:
-  application:
-    name: statistics-service
-
   cloud:
     kubernetes:
       enabled: false

@@ -38,7 +38,7 @@ import java.time.Duration;
 @Import(GrpcTestConfig.class)
 class BaseRouterTest {
     @Autowired
-    WebTestClient webClient;
+    protected WebTestClient webClient;
 
     private Resources resources;
 
@@ -51,7 +51,7 @@ class BaseRouterTest {
      * @return a spy of the gRPC service
      * @throws IOException if unable to bind the service
      */
-    <T extends BindableService> T spyGrpcService(Class<T> cls, String serviceName) throws IOException {
+    protected <T extends BindableService> T spyGrpcService(Class<T> cls, String serviceName) throws IOException {
         T service = spy(cls);
         Server server = InProcessServerBuilder.forName(serviceName)
                 .directExecutor()
@@ -64,7 +64,7 @@ class BaseRouterTest {
     /**
      * Mocks a JWT token.
      */
-    JwtMutator mockJwt(String userName) {
+    protected JwtMutator mockJwt(String userName) {
         return SecurityMockServerConfigurers.mockJwt()
                 .jwt(builder -> builder.claim(USERNAME_CLAIM, userName));
     }
