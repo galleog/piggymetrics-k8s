@@ -11,7 +11,7 @@ import com.github.galleog.piggymetrics.notification.domain.NotificationType;
 import com.github.galleog.piggymetrics.notification.domain.Recipient;
 import com.github.galleog.piggymetrics.notification.domain.tables.records.RecipientsRecord;
 import com.github.galleog.piggymetrics.notification.repository.RecipientRepository;
-import com.github.galleog.r2dbc.jooq.transaction.TransactionAwareJooqWrapper;
+import com.github.galleog.piggymetrics.autoconfigure.jooq.TransactionAwareJooqWrapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import lombok.RequiredArgsConstructor;

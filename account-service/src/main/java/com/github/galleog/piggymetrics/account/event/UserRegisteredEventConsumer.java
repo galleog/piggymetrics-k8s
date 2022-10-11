@@ -7,7 +7,9 @@ import com.github.galleog.piggymetrics.auth.grpc.UserRegisteredEventProto.UserRe
 import com.google.common.annotations.VisibleForTesting;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.javamoney.moneta.Money;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -21,8 +23,9 @@ import java.util.function.Function;
  * Consumer of events on new user registrations.
  */
 @Slf4j
+@Component
 @RequiredArgsConstructor
-public class UserRegisteredEventConsumer implements Function<Flux<UserRegisteredEvent>, Mono<Void>> {
+public class UserRegisteredEventConsumer implements Function<Flux<ConsumerRecord<String, UserRegisteredEvent>>, Mono<Void>> {
     @VisibleForTesting
     public static final CurrencyUnit BASE_CURRENCY = Monetary.getCurrency("USD");
 
@@ -30,8 +33,8 @@ public class UserRegisteredEventConsumer implements Function<Flux<UserRegistered
     private final TransactionalOperator operator;
 
     @Override
-    public Mono<Void> apply(Flux<UserRegisteredEvent> events) {
-        return events.map(UserRegisteredEvent::getUserName)
+    public Mono<Void> apply(Flux<ConsumerRecord<String, UserRegisteredEvent>> records) {
+        return records.map(ConsumerRecord::key)
                 .doOnNext(name -> logger.info("UserRegisteredEvent for user '{}' received", name))
                 .flatMap(this::doCreateAccount)
                 .then();

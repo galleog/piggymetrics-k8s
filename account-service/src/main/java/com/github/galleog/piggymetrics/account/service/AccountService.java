@@ -10,19 +10,23 @@ import com.github.galleog.piggymetrics.account.domain.ItemType;
 import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.domain.TimePeriod;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto;
+import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.AccountUpdatedEvent;
 import com.github.galleog.piggymetrics.account.grpc.AccountServiceProto.GetAccountRequest;
 import com.github.galleog.piggymetrics.account.grpc.ReactorAccountServiceGrpc;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
 import com.google.common.base.Converter;
 import io.grpc.Status;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.reactive.ReactiveKafkaProducerTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.Sinks;
+import reactor.kafka.sender.SenderRecord;
+import reactor.kafka.sender.SenderResult;
 
 import javax.money.MonetaryException;
 import java.time.DateTimeException;
@@ -33,14 +37,24 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @GrpcService
-@RequiredArgsConstructor
 public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImplBase {
     private static final Converter<Account, AccountServiceProto.Account> ACCOUNT_CONVERTER = new AccountConverter();
     private static final Converter<Item, AccountServiceProto.Item> ITEM_CONVERTER = new ItemConverter();
     private static final Converter<Saving, AccountServiceProto.Saving> SAVING_CONVERTER = new SavingConverter();
 
-    private final AccountRepository repository;
-    private final Sinks.Many<AccountServiceProto.Account> sink;
+    private final String topic;
+    private final AccountRepository accountRepository;
+    private final ReactiveKafkaProducerTemplate<String, AccountUpdatedEvent> producerTemplate;
+
+    /**
+     * Constructs an object instance.
+     */
+    public AccountService(@Value("${spring.kafka.producer.topic}") String topic, AccountRepository accountRepository,
+                          ReactiveKafkaProducerTemplate<String, AccountUpdatedEvent> producerTemplate) {
+        this.topic = topic;
+        this.accountRepository = accountRepository;
+        this.producerTemplate = producerTemplate;
+    }
 
     @Override
     public Mono<AccountServiceProto.Account> getAccount(Mono<GetAccountRequest> request) {
@@ -57,7 +71,7 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
     }
 
     private Mono<Account> doGetAccount(String name) {
-        return repository.getByName(name)
+        return accountRepository.getByName(name)
                 .doOnNext(account -> logger.debug("Account for user '{}' found", name))
                 .switchIfEmpty(Mono.error(() -> Status.NOT_FOUND
                         .withDescription("Account for user '" + name + "' not found")
@@ -65,16 +79,26 @@ public class AccountService extends ReactorAccountServiceGrpc.AccountServiceImpl
     }
 
     private Mono<AccountServiceProto.Account> doUpdateAccount(Account account) {
-        return repository.update(account)
+        return accountRepository.update(account)
                 .switchIfEmpty(Mono.error(() -> Status.NOT_FOUND
                         .withDescription("Account for user '" + account.getName() + "' not found")
                         .asRuntimeException()))
                 .map(ACCOUNT_CONVERTER::convert)
-                .doOnNext(a -> {
-                    // send an event on the account update
-                    sink.tryEmitNext(a).orThrow();
-                    logger.info("Account for user '{}' updated", a.getName());
-                });
+                .flatMap(this::sendEvent)
+                .map(SenderResult::correlationMetadata)
+                .doOnNext(a -> logger.info("Account for user '{}' updated", a.getName()));
+    }
+
+    private Mono<SenderResult<AccountServiceProto.Account>> sendEvent(AccountServiceProto.Account account) {
+        var event = AccountUpdatedEvent.newBuilder()
+                .setAccountName(account.getName())
+                .addAllItems(account.getItemsList())
+                .setSaving(account.getSaving())
+                .setNote(account.getNote())
+                .build();
+        var record = new ProducerRecord<>(topic, account.getName(), event);
+        return producerTemplate.send(SenderRecord.create(record, account))
+                .doOnError(e -> logger.error("Failed to send AccountUpdatedEvent for user'" + account.getName() + "'", e));
     }
 
     private static final class AccountConverter extends Converter<Account, AccountServiceProto.Account> {

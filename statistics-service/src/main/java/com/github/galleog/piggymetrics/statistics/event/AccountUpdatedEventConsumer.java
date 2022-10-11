@@ -15,6 +15,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
@@ -31,7 +32,7 @@ import java.util.function.Function;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AccountUpdatedEventConsumer implements Function<Flux<AccountUpdatedEvent>, Mono<Void>> {
+public class AccountUpdatedEventConsumer implements Function<Flux<ConsumerRecord<String, AccountUpdatedEvent>>, Mono<Void>> {
     @VisibleForTesting
     static final CurrencyUnit BASE_CURRENCY = Monetary.getCurrency("USD");
 
@@ -40,8 +41,9 @@ public class AccountUpdatedEventConsumer implements Function<Flux<AccountUpdated
     private final TransactionalOperator operator;
 
     @Override
-    public Mono<Void> apply(Flux<AccountUpdatedEvent> events) {
-        return events.doOnNext(event -> logger.info("AccountUpdatedEvent for account '{}' received", event.getAccountName()))
+    public Mono<Void> apply(Flux<ConsumerRecord<String, AccountUpdatedEvent>> records) {
+        return records.map(ConsumerRecord::value)
+                .doOnNext(event -> logger.info("AccountUpdatedEvent for account '{}' received", event.getAccountName()))
                 .flatMap(this::doUpdateStatistics)
                 .then();
     }

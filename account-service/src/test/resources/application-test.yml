@@ -11,6 +11,8 @@ spring:
 grpc:
   server:
     port: -1
+    in-process-name: account-service
 
-
-
+  client:
+    account-service:
+      address: "in-process:account-service"

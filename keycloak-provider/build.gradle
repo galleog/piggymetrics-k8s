@@ -16,11 +16,9 @@ jar {
 dependencies {
     implementation(
             'com.google.protobuf:protobuf-java',
-            'org.apache.kafka:kafka-clients'
+            'org.apache.kafka:kafka-clients',
+            'com.github.daniel-shuy:kafka-protobuf-serde'
     )
-    implementation('com.github.daniel-shuy:kafka-protobuf-serde') {
-        exclude group: 'org.apache.kafka'
-    }
 
     compileOnly(
             'org.apache.commons:commons-lang3',

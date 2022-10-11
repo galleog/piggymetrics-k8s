@@ -27,18 +27,12 @@ spring:
       reload:
         enabled: true
 
-    function:
-      definition: userRegisteredEventConsumer
-
-    stream:
-      bindings:
-        userRegisteredEventConsumer-in-0:
-          destination: ${USER_EVENTS_TOPIC:user-events}
-          content-type: application/x-protobuf
-
-      kafka:
-        binder:
-          brokers: ${KAFKA_BROKERS:localhost:9092}
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
+    consumer:
+      subscribeTopics: ${USER_EVENTS_TOPIC:user-events}
+      group-id: notification-service
+      auto-offset-reset: earliest
 
   mail:
     host: smtp.gmail.com

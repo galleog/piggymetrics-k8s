@@ -13,7 +13,7 @@ import com.github.galleog.piggymetrics.statistics.domain.tables.records.DataPoin
 import com.github.galleog.piggymetrics.statistics.domain.tables.records.ItemMetricsRecord;
 import com.github.galleog.piggymetrics.statistics.domain.tables.records.StatisticalMetricsRecord;
 import com.github.galleog.piggymetrics.statistics.repository.DataPointRepository;
-import com.github.galleog.r2dbc.jooq.transaction.TransactionAwareJooqWrapper;
+import com.github.galleog.piggymetrics.autoconfigure.jooq.TransactionAwareJooqWrapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;

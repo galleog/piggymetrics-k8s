@@ -12,7 +12,7 @@ import com.github.galleog.piggymetrics.account.domain.Saving;
 import com.github.galleog.piggymetrics.account.domain.tables.records.AccountsRecord;
 import com.github.galleog.piggymetrics.account.domain.tables.records.SavingsRecord;
 import com.github.galleog.piggymetrics.account.repository.AccountRepository;
-import com.github.galleog.r2dbc.jooq.transaction.TransactionAwareJooqWrapper;
+import com.github.galleog.piggymetrics.autoconfigure.jooq.TransactionAwareJooqWrapper;
 import com.google.common.collect.ImmutableList;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.Validate;

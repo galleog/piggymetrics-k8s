@@ -1,0 +1,3 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.github.galleog.piggymetrics.autoconfigure.jooq.R2dbcJooqAutoConfiguration,\
+com.github.galleog.piggymetrics.autoconfigure.kafka.ReactiveKafkaAutoConfiguration

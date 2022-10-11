@@ -8,6 +8,7 @@ import com.github.galleog.piggymetrics.notification.domain.Recipient;
 import com.github.galleog.piggymetrics.notification.repository.RecipientRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
@@ -21,13 +22,14 @@ import java.util.function.Function;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class UserRegisteredEventConsumer implements Function<Flux<UserRegisteredEvent>, Mono<Void>> {
+public class UserRegisteredEventConsumer implements Function<Flux<ConsumerRecord<String, UserRegisteredEvent>>, Mono<Void>> {
     private final RecipientRepository recipientRepository;
     private final TransactionalOperator operator;
 
     @Override
-    public Mono<Void> apply(Flux<UserRegisteredEvent> events) {
-        return events.doOnNext(event -> logger.info("UserRegisteredEvent for user '{}' received", event.getUserName()))
+    public Mono<Void> apply(Flux<ConsumerRecord<String, UserRegisteredEvent>> records) {
+        return records.map(ConsumerRecord::value)
+                .doOnNext(event -> logger.info("UserRegisteredEvent for user '{}' received", event.getUserName()))
                 .flatMap(this::doCreateRecipient)
                 .then();
     }

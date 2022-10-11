@@ -15,6 +15,7 @@ dependencies {
             'org.springframework.cloud:spring-cloud-starter-kubernetes-fabric8-config',
             'org.springframework.security:spring-security-oauth2-resource-server',
             'org.springframework.security:spring-security-oauth2-jose',
+            'io.projectreactor:reactor-core',
             'io.grpc:grpc-protobuf',
             'io.grpc:grpc-stub',
             'com.salesforce.servicelibs:reactor-grpc-stub',

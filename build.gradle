@@ -29,7 +29,7 @@ ext {
             commonsIo           : '2.11.0',
             shedlock            : '4.38.0',
             simpleJavaMail      : '6.7.6',
-            testcontainers      : '1.17.3',
+            testcontainers      : '1.17.5',
             postgresql          : '42.3.6',
             grpc                : '1.46.0',
             reactiveGrpc        : '1.2.3',
@@ -41,7 +41,10 @@ ext {
             liquibaseSlf4j      : '4.1.0',
             grpcTest            : '1.2.1',
             jakartaXmlBind      : '3.0.1',
-            r2dbc               : '0.9.1.RELEASE'
+            r2dbc               : '0.9.1.RELEASE',
+            reactor             : '2020.0.23',
+            kafkaJunit          : '3.2.1',
+            awaitility          : '4.2.0'
     ]
 
     database = [
@@ -86,9 +89,11 @@ subprojects {
         imports {
             mavenBom SpringBootPlugin.BOM_COORDINATES
             mavenBom "org.springframework.cloud:spring-cloud-dependencies:${ver.springCloud}"
+            mavenBom "io.projectreactor:reactor-bom:${ver.reactor}"
             mavenBom "org.keycloak.bom:keycloak-spi-bom:${ver.keycloak}"
             mavenBom "io.grpc:grpc-bom:${ver.grpc}"
             mavenBom "com.google.protobuf:protobuf-bom:${ver.protobuf}"
+            mavenBom "org.testcontainers:testcontainers-bom:${ver.testcontainers}"
         }
 
         dependencies {
@@ -103,9 +108,6 @@ subprojects {
             dependency "net.javacrumbs.shedlock:shedlock-spring:${ver.shedlock}"
             dependency "net.javacrumbs.shedlock:shedlock-provider-r2dbc:${ver.shedlock}"
             dependency "org.simplejavamail:simple-java-mail:${ver.simpleJavaMail}"
-            dependency "org.testcontainers:postgresql:${ver.testcontainers}"
-            dependency "org.testcontainers:r2dbc:${ver.testcontainers}"
-            dependency "org.testcontainers:junit-jupiter:${ver.testcontainers}"
             dependency "org.postgresql:postgresql:${ver.postgresql}"
             dependency "net.devh:grpc-spring-boot-starter:${ver.grpcSpringBoot}"
             dependency "net.devh:grpc-server-spring-boot-starter:${ver.grpcSpringBoot}"
@@ -119,6 +121,8 @@ subprojects {
             dependency "io.r2dbc:r2dbc-spi:${ver.r2dbc}"
             dependency "io.r2dbc:r2dbc-pool:${ver.r2dbc}"
             dependency "org.postgresql:r2dbc-postgresql:${ver.r2dbc}"
+            dependency "net.mguenther.kafka:kafka-junit:${ver.kafkaJunit}"
+            dependency "org.awaitility:awaitility:${ver.awaitility}"
         }
     }
 

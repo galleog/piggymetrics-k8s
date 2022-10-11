@@ -2,7 +2,7 @@ package com.github.galleog.piggymetrics.account.config;
 
 import static com.github.galleog.piggymetrics.account.domain.Public.PUBLIC;
 
-import com.github.galleog.r2dbc.jooq.config.JooqProperties;
+import com.github.galleog.piggymetrics.autoconfigure.jooq.JooqProperties;
 import org.jooq.conf.MappedSchema;
 import org.jooq.conf.RenderMapping;
 import org.jooq.conf.Settings;

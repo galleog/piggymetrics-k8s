@@ -8,10 +8,11 @@ description = 'account-service'
 dependencies {
     implementation(
             project(':grpc-common'),
-            project(':r2dbc-jooq'),
-            project(':protobuf-spring-cloud-stream'),
-            'org.springframework.cloud:spring-cloud-starter-stream-kafka',
+            project(':pgm-autoconfigure'),
             'org.springframework.cloud:spring-cloud-starter-kubernetes-fabric8-config',
+            'org.springframework.kafka:spring-kafka',
+            'io.projectreactor:reactor-core',
+            'io.projectreactor.kafka:reactor-kafka',
             'io.grpc:grpc-protobuf',
             'io.grpc:grpc-stub',
             'io.grpc:grpc-services',
@@ -19,7 +20,8 @@ dependencies {
             'net.devh:grpc-server-spring-boot-starter',
             'org.apache.commons:commons-lang3',
             'org.javamoney:moneta',
-            'com.google.guava:guava'
+            'com.google.guava:guava',
+            'com.github.daniel-shuy:kafka-protobuf-serde'
     )
 
     runtimeOnly(
@@ -33,20 +35,17 @@ dependencies {
 
     testImplementation(
             'org.springframework.boot:spring-boot-starter-test',
+            'net.devh:grpc-client-spring-boot-starter',
             'io.projectreactor:reactor-test',
             'com.ninja-squad:DbSetup',
             'org.assertj:assertj-db',
             'org.mockito:mockito-junit-jupiter',
             'org.testcontainers:postgresql',
+            'org.testcontainers:kafka',
             'org.testcontainers:junit-jupiter'
     )
-    testImplementation("org.springframework.cloud:spring-cloud-stream") {
-        artifact {
-            name = "spring-cloud-stream"
-            extension = "jar"
-            type ="test-jar"
-            classifier = "test-binder"
-        }
+    testImplementation('net.mguenther.kafka:kafka-junit') {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     }
 
     jooqGenerator(

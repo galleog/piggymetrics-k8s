@@ -1,0 +1,41 @@
+apply plugin: 'java-library'
+
+description = 'pgm-autoconfigure'
+
+jar {
+    manifest {
+        attributes(
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version
+        )
+    }
+}
+
+dependencies {
+    api(
+            'org.slf4j:slf4j-api'
+    )
+
+    implementation(
+            'org.springframework.boot:spring-boot-autoconfigure',
+            'org.springframework:spring-r2dbc',
+            'org.springframework.kafka:spring-kafka',
+            'io.projectreactor.kafka:reactor-kafka',
+            'org.jooq:jooq'
+    )
+
+    testImplementation(
+            'org.springframework.boot:spring-boot-starter-test',
+            'org.springframework:spring-jdbc',
+            'org.springframework:spring-tx',
+            'io.projectreactor:reactor-test',
+            'com.ninja-squad:DbSetup',
+            'org.assertj:assertj-db',
+            'io.r2dbc:r2dbc-h2',
+            'org.testcontainers:kafka',
+            'org.testcontainers:junit-jupiter',
+            'com.google.guava:guava',
+            'org.awaitility:awaitility',
+            'org.hamcrest:hamcrest'
+    )
+}

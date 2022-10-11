@@ -9,11 +9,12 @@ dependencies {
     implementation(
             project(':pgm-core'),
             project(':grpc-common'),
-            project(':r2dbc-jooq'),
-            project(':protobuf-spring-cloud-stream'),
-            'org.springframework.cloud:spring-cloud-starter-stream-kafka',
+            project(':pgm-autoconfigure'),
             'org.springframework.cloud:spring-cloud-starter-kubernetes-fabric8-config',
             'org.springframework.boot:spring-boot-starter-mail',
+            'org.springframework.kafka:spring-kafka',
+            'io.projectreactor:reactor-core',
+            'io.projectreactor.kafka:reactor-kafka',
             'io.grpc:grpc-protobuf',
             'io.grpc:grpc-stub',
             'io.grpc:grpc-services',
@@ -23,7 +24,8 @@ dependencies {
             'org.apache.commons:commons-lang3',
             'com.google.guava:guava',
             'net.javacrumbs.shedlock:shedlock-spring',
-            'net.javacrumbs.shedlock:shedlock-provider-r2dbc'
+            'net.javacrumbs.shedlock:shedlock-provider-r2dbc',
+            'com.github.daniel-shuy:kafka-protobuf-serde'
     )
     implementation('commons-validator:commons-validator') {
         exclude module: 'commons-logging'
@@ -47,17 +49,12 @@ dependencies {
             'org.junit.jupiter:junit-jupiter',
             'commons-io:commons-io',
             'org.simplejavamail:simple-java-mail',
-            'com.asarkar.grpc:grpc-test',
+            'org.testcontainers:kafka',
             'org.testcontainers:postgresql',
             'org.testcontainers:junit-jupiter'
     )
-    testImplementation("org.springframework.cloud:spring-cloud-stream") {
-        artifact {
-            name = "spring-cloud-stream"
-            extension = "jar"
-            type ="test-jar"
-            classifier = "test-binder"
-        }
+    testImplementation('net.mguenther.kafka:kafka-junit') {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     }
 
     jooqGenerator(

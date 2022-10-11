@@ -52,7 +52,7 @@ class StatisticsServiceTest {
     private static final BigDecimalProto.BigDecimal SAVING_PROTO_AMOUNT = bigDecimalConverter().convert(SAVING_AMOUNT);
 
     @Mock
-    private DataPointRepository repository;
+    private DataPointRepository dataPointRepository;
     @InjectMocks
     private StatisticsService statisticsService;
 
@@ -61,7 +61,7 @@ class StatisticsServiceTest {
      */
     @Test
     void shouldListDataPoints() {
-        when(repository.listByAccountName(ACCOUNT_NAME)).thenReturn(
+        when(dataPointRepository.listByAccountName(ACCOUNT_NAME)).thenReturn(
                 Flux.just(
                         stubDataPoint(DATE_1, SAVING_AMOUNT, salary()),
                         stubDataPoint(DATE_2, SAVING_AMOUNT, grocery(), vacation())
@@ -115,7 +115,7 @@ class StatisticsServiceTest {
      */
     @Test
     void shouldFailToListDataPoints() {
-        when(repository.listByAccountName(ACCOUNT_NAME)).thenReturn(Flux.empty());
+        when(dataPointRepository.listByAccountName(ACCOUNT_NAME)).thenReturn(Flux.empty());
 
         statisticsService.listDataPoints(stubListDataPointsRequest())
                 .as(StepVerifier::create)
