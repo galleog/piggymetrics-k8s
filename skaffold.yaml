@@ -30,10 +30,10 @@ deploy:
         imageStrategy:
           helm: {}
         setValues:
-          pgm-frontend.enabled: true
-          api-gateway.enabled: true
-          account-service.enabled: true
-          notification-service.enabled: true
+          pgm-frontend.enabled: false
+          api-gateway.enabled: false
+          account-service.enabled: false
+          notification-service.enabled: false
           statistics-service.enabled: true
         valuesFiles:
           - ./charts/global-values.yaml

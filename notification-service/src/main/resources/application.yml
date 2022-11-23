@@ -32,7 +32,6 @@ spring:
     consumer:
       subscribeTopics: ${USER_EVENTS_TOPIC:user-events}
       group-id: notification-service
-      auto-offset-reset: earliest
 
   mail:
     host: smtp.gmail.com

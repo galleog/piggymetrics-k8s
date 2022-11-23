@@ -34,7 +34,6 @@ spring:
     consumer:
       subscribeTopics: ${USER_EVENTS_TOPIC:user-events}
       group-id: account-service
-      auto-offset-reset: earliest
 
 grpc:
   server:
