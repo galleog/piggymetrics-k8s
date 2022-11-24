@@ -34,7 +34,7 @@ public class UserRegisteredEventConsumer implements Function<Flux<ConsumerRecord
 
     @Override
     public Mono<Void> apply(Flux<ConsumerRecord<String, UserRegisteredEvent>> records) {
-        return records.map(ConsumerRecord::key)
+        return records.map(record -> record.value().getUserName())
                 .doOnNext(name -> logger.info("UserRegisteredEvent for user '{}' received", name))
                 .flatMap(this::doCreateAccount)
                 .then();

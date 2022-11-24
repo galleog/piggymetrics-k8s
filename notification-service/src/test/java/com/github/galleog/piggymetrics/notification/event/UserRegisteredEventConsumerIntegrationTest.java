@@ -53,12 +53,13 @@ import java.util.UUID;
 @SpringBootTest(classes = UserRegisteredEventConsumerIntegrationTest.Config.class)
 class UserRegisteredEventConsumerIntegrationTest {
     private static final DockerImageName KAFKA_IMAGE = DockerImageName.parse("confluentinc/cp-kafka:7.2.2");
+    private static final String USER_ID = UUID.randomUUID().toString();
     private static final String USERNAME = "test";
     private static final String EMAIL = "test@example.com";
     private static final KeyValue<String, UserRegisteredEvent> EVENT = new KeyValue<>(
-            USERNAME,
+            USER_ID,
             UserRegisteredEvent.newBuilder()
-                    .setUserId(UUID.randomUUID().toString())
+                    .setUserId(USER_ID)
                     .setUserName(USERNAME)
                     .setEmail(EMAIL)
                     .build()
