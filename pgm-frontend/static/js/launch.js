@@ -18,7 +18,7 @@ $(window).load(function() {
 });
 
 function showGreetingPage(account) {
-    initAccount(account);
+  initAccount(account);
 	var userAvatar = $("<img />").attr("src","images/userpic.jpg");
 	$(userAvatar).load(function() {
 		setTimeout(initGreetingPage, 500);
