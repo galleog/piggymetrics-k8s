@@ -8,13 +8,13 @@ var global = {
 $(window).load(function() {
 	if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
 		FastClick.attach(document.body);
-        global.mobileClient = true;
+    global.mobileClient = true;
 	}
 
-    $.getJSON("https://api.ratesapi.io/api/latest?base=RUB&symbols=EUR,USD", function( data ) {
-        global.eur = 1 / data.rates.EUR;
-        global.usd = 1 / data.rates.USD;
-    });
+  $.getJSON("https://api.exchangerate.host/latest?base=RUB&symbols=EUR,USD", function( data ) {
+    global.eur = 1 / data.rates.EUR;
+    global.usd = 1 / data.rates.USD;
+  });
 });
 
 function showGreetingPage(account) {
