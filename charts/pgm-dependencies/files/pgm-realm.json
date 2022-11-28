@@ -2,10 +2,10 @@
   "realm": "piggymetrics",
   "enabled": true,
   "registrationAllowed": true,
-  "accessTokenLifespan": 60,
+  "accessTokenLifespan": 300,
   "accessCodeLifespan": 60,
   "accessCodeLifespanUserAction": 300,
-  "ssoSessionIdleTimeout": 600,
+  "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "sslRequired": "external",
   "roles": {
